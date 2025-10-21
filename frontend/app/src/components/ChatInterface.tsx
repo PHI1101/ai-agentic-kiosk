@@ -26,6 +26,8 @@ interface CurrentOrder {
   pickupTimeDate: string | null; // ISO 8601 형식의 문자열로 받을 예정
 }
 
+import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew'; // New import for accessibility icon
+
 const ChatInterface: React.FC = () => {
   const { messages, addMessage } = useChatStore();
   const { transcript, isListening, startListening, stopListening, resetTranscript, hasSupport } = useVoiceRecognition();
@@ -33,6 +35,7 @@ const ChatInterface: React.FC = () => {
   const [currentOrder, setCurrentOrder] = useState<CurrentOrder | null>(null);
   const [remainingPickupTime, setRemainingPickupTime] = useState<number | null>(null);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
+  const [isVisuallyImpairedMode, setIsVisuallyImpairedMode] = useState(false); // New state for visually impaired mode
 
   useEffect(() => {
     if (transcript) {
@@ -47,6 +50,24 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     scrollToBottom()
   }, [messages]);
+
+  // TTS (Text-to-Speech) 로직
+  useEffect(() => {
+    if (isVisuallyImpairedMode && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.sender === 'ai') {
+        // 기존 음성 중지
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(lastMessage.text);
+        utterance.lang = 'ko-KR'; // 한국어 설정
+        window.speechSynthesis.speak(utterance);
+      }
+    } else {
+      // 시각 장애인 모드가 비활성화되면 음성 중지
+      window.speechSynthesis.cancel();
+    }
+  }, [messages, isVisuallyImpairedMode]);
 
   // 픽업 시간 카운트다운 로직
   useEffect(() => {
@@ -128,6 +149,14 @@ const ChatInterface: React.FC = () => {
           )}
           <IconButton color="primary" onClick={handleSendMessage} sx={{ ml: 1 }}>
             <SendIcon />
+          </IconButton>
+          <IconButton
+            color={isVisuallyImpairedMode ? 'secondary' : 'default'}
+            onClick={() => setIsVisuallyImpairedMode(!isVisuallyImpairedMode)}
+            sx={{ ml: 1 }}
+            aria-label="시각 장애인 모드 토글"
+          >
+            <AccessibilityNewIcon />
           </IconButton>
         </Box>
       </Paper>
