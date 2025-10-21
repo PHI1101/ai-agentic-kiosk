@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, TextField, IconButton, Paper, Typography, List, ListItem, ListItemText, Divider } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import SendIcon from '@mui/icons-material/Send';
+import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew'; // New import for accessibility icon
 import useChatStore, { Message } from '../store/chatStore';
 import useVoiceRecognition from '../hooks/useVoiceRecognition';
 import MessageBubble from './MessageBubble';
@@ -26,22 +27,52 @@ interface CurrentOrder {
   pickupTimeDate: string | null; // ISO 8601 형식의 문자열로 받을 예정
 }
 
-import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew'; // New import for accessibility icon
-
 const ChatInterface: React.FC = () => {
   const { messages, addMessage } = useChatStore();
-  const { transcript, isListening, startListening, stopListening, resetTranscript, hasSupport } = useVoiceRecognition();
+  const [isVisuallyImpairedMode, setIsVisuallyImpairedMode] = useState(false); // Moved declaration here
+  const { transcript, isListening, startListening, stopListening, resetTranscript, hasSupport } = useVoiceRecognition(isVisuallyImpairedMode); // Pass the state
   const [inputValue, setInputValue] = useState('');
   const [currentOrder, setCurrentOrder] = useState<CurrentOrder | null>(null);
   const [remainingPickupTime, setRemainingPickupTime] = useState<number | null>(null);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
-  const [isVisuallyImpairedMode, setIsVisuallyImpairedMode] = useState(false); // New state for visually impaired mode
+  // const [isVisuallyImpairedMode, setIsVisuallyImpairedMode] = useState(false); // Removed original declaration
+  const [isAwaitingAccessibilityResponse, setIsAwaitingAccessibilityResponse] = useState(false);
+  const initialPromptSentRef = useRef(false); // New ref
 
   useEffect(() => {
     if (transcript) {
       setInputValue(transcript);
+      // 음성 인식이 멈추고 transcript가 있으면 자동으로 메시지 전송 (continuous: false 모드)
+      // 단, 초기 접근성 질문에 대한 응답 대기 중이 아닐 때만 자동 전송
+      if (!isVisuallyImpairedMode && !isListening && transcript.trim() !== '' && !isAwaitingAccessibilityResponse) {
+        handleSendMessage();
+      }
     }
-  }, [transcript]);
+  }, [transcript, isListening, isAwaitingAccessibilityResponse, isVisuallyImpairedMode]); // isVisuallyImpairedMode 추가
+
+  // 시각 장애인 모드 (continuous: true)일 때 음성 입력 자동 전송 로직 (정지 감지)
+  useEffect(() => {
+    let silenceTimer: NodeJS.Timeout | null = null;
+    const SILENCE_THRESHOLD = 1500; // 1.5초 동안 말이 없으면 전송
+
+    if (isVisuallyImpairedMode && isListening && transcript.trim() !== '' && !isAwaitingAccessibilityResponse) {
+      // 이전 타이머가 있다면 클리어
+      if (silenceTimer) {
+        clearTimeout(silenceTimer);
+      }
+      // 일정 시간 후 메시지 전송 타이머 시작
+      silenceTimer = setTimeout(() => {
+        handleSendMessage();
+      }, SILENCE_THRESHOLD);
+    }
+
+    // 클린업 함수: 컴포넌트 언마운트 또는 의존성 변경 시 타이머 클리어
+    return () => {
+      if (silenceTimer) {
+        clearTimeout(silenceTimer);
+      }
+    };
+  }, [transcript, isVisuallyImpairedMode, isListening, isAwaitingAccessibilityResponse]); // handleSendMessage는 의존성 배열에 포함하지 않음 (렌더링마다 재생성 방지) // isListening과 isAwaitingAccessibilityResponse를 의존성 배열에 추가
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,20 +82,38 @@ const ChatInterface: React.FC = () => {
     scrollToBottom()
   }, [messages]);
 
+  // 초기 접근성 안내 메시지
+  useEffect(() => {
+    if (initialPromptSentRef.current) { // Check ref
+      return;
+    }
+
+    if (hasSupport) { // hasSupport가 true일 때만 음성 안내 시도
+      initialPromptSentRef.current = true; // Set ref to true
+      setIsAwaitingAccessibilityResponse(true); // Now awaiting response
+      const initialMessage = "안녕하세요. 이 키오스크는 시각, 청각, 지체 장애인을 위한 배리어프리 기능을 제공합니다. 혹시 음성 안내가 필요하시면 '네'라고 말씀해주세요.";
+      addMessage({ text: initialMessage, sender: 'ai' });
+      
+      const utterance = new SpeechSynthesisUtterance(initialMessage);
+      utterance.lang = 'ko-KR';
+      window.speechSynthesis.speak(utterance);
+
+      startListening();
+    }
+  }, [hasSupport, addMessage, startListening]); // Removed hasAskedForAccessibility from dependencies
+
   // TTS (Text-to-Speech) 로직
   useEffect(() => {
     if (isVisuallyImpairedMode && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.sender === 'ai') {
-        // 기존 음성 중지
         window.speechSynthesis.cancel();
 
         const utterance = new SpeechSynthesisUtterance(lastMessage.text);
-        utterance.lang = 'ko-KR'; // 한국어 설정
+        utterance.lang = 'ko-KR';
         window.speechSynthesis.speak(utterance);
       }
     } else {
-      // 시각 장애인 모드가 비활성화되면 음성 중지
       window.speechSynthesis.cancel();
     }
   }, [messages, isVisuallyImpairedMode]);
@@ -77,15 +126,15 @@ const ChatInterface: React.FC = () => {
       const updateRemainingTime = () => {
         const now = new Date();
         const diffMinutes = Math.ceil((pickupDate.getTime() - now.getTime()) / (1000 * 60));
-        if (diffMinutes >= 0) { // 0분일 때도 표시되도록 수정
+        if (diffMinutes >= 0) {
           setRemainingPickupTime(diffMinutes);
         } else {
           setRemainingPickupTime(0);
           if (timer) clearInterval(timer);
         }
       };
-      updateRemainingTime(); // 즉시 업데이트
-      timer = setInterval(updateRemainingTime, 60 * 1000); // 1분마다 업데이트
+      updateRemainingTime();
+      timer = setInterval(updateRemainingTime, 60 * 1000);
     } else {
       setRemainingPickupTime(null);
     }
@@ -100,6 +149,27 @@ const ChatInterface: React.FC = () => {
 
     addMessage({ text: inputValue, sender: 'user' });
 
+    // 초기 접근성 질문에 대한 응답 처리
+    if (isAwaitingAccessibilityResponse) {
+      setIsAwaitingAccessibilityResponse(false); // No longer awaiting
+      const userResponse = inputValue.toLowerCase();
+      if (userResponse.includes('네') || userResponse.includes('맞습니다')) {
+        setIsVisuallyImpairedMode(true);
+        addMessage({ text: '네, 시각 장애인 모드를 활성화합니다. 이제부터 음성으로 안내해 드릴게요.', sender: 'ai' });
+        setInputValue('');
+        resetTranscript();
+        // startListening(); // Removed this line
+        return;
+      } else {
+        // 사용자가 '네' 또는 '맞습니다'라고 응답하지 않은 경우, 일반 대화로 진행
+        addMessage({ text: '알겠습니다. 일반 모드로 진행합니다.', sender: 'ai' });
+        stopListening();
+        setInputValue('');
+        resetTranscript();
+        // Fall through to normal backend communication
+      }
+    }
+
     try {
       const response = await axios.post('http://localhost:3001/api/process-command', { message: inputValue });
       addMessage({ text: response.data.reply, sender: 'ai' });
@@ -113,12 +183,28 @@ const ChatInterface: React.FC = () => {
     resetTranscript();
   };
 
+  // 시각 장애인 모드 활성화 시 마이크 자동 활성화
+  useEffect(() => {
+    if (isVisuallyImpairedMode && !isListening) {
+      startListening();
+    }
+  }, [isVisuallyImpairedMode, isListening, startListening]);
+
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
+      // 음성 인식이 중지될 때 TTS도 중지
+      window.speechSynthesis.cancel();
     } else {
       resetTranscript();
       startListening();
+      if (isVisuallyImpairedMode) {
+        const listeningMessage = "듣는 중...";
+        addMessage({ text: listeningMessage, sender: 'ai' }); // 채팅 기록에도 추가
+        const utterance = new SpeechSynthesisUtterance(listeningMessage);
+        utterance.lang = 'ko-KR';
+        window.speechSynthesis.speak(utterance);
+      }
     }
   };
 
@@ -131,6 +217,13 @@ const ChatInterface: React.FC = () => {
           ))}
           <div ref={messagesEndRef} />
         </Box>
+        {isListening && ( // Moved here, inside the Paper, above the input field's Box
+          <Box sx={{ p: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'action.hover' }}>
+            <Typography variant="body2" color="primary">
+              듣는 중...
+            </Typography>
+          </Box>
+        )}
         <Box sx={{ p: 2, borderTop: '1px solid #ddd', display: 'flex', alignItems: 'center' }}>
           <TextField
             fullWidth
@@ -141,9 +234,11 @@ const ChatInterface: React.FC = () => {
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
           />
           {hasSupport ? (
-            <IconButton color={isListening ? 'secondary' : 'primary'} onClick={handleMicClick} sx={{ ml: 1 }}>
-              <MicIcon />
-            </IconButton>
+            <>
+              <IconButton color={isListening ? 'secondary' : 'primary'} onClick={handleMicClick} sx={{ ml: 1 }}>
+                <MicIcon />
+              </IconButton>
+            </>
           ) : (
             <Typography variant="caption" color="error" sx={{ ml: 1 }}>음성 인식을 지원하지 않는 브라우저입니다.</Typography>
           )}
