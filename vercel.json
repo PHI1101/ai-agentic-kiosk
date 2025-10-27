@@ -1,19 +1,27 @@
 {
   "version": 2,
+  "functions": {
+    "api/process-command.js": {
+      "runtime": "@vercel/node"
+    }
+  },
   "builds": [
     {
-      "src": "frontend/app/package.json",
-      "use": "@vercel/static-build"
-    },
-    {
-      "src": "api/process-command.js",
-      "use": "@vercel/node"
+      "src": "frontend/app",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
     }
   ],
   "routes": [
     {
-      "src": "/api/process-command",
-      "dest": "/api/process-command"
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/app/build/index.html"
     }
   ]
 }
