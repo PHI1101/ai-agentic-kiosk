@@ -1,46 +1,56 @@
-# Gemini AI 키오스크 프로젝트 변경 로그
+작성일: 2025년 10월 27일
 
-이 문서는 Gemini AI 어시스턴트가 수행한 변경 사항을 요약하고 WheelWayMobile 프로젝트의 향후 작업을 설명합니다.
+### 1. 초기 요청 및 문제 발생
 
-## 현재 상태
+*   사용자 요청: 모든 파일을 GitHub에 커밋하고 푸시. Vercel Serverless Functions로 백엔드 관리.
+*   초기 문제: Vercel 배포 후 `405 Method Not Allowed` 오류 발생.
 
-보고된 모든 TypeScript 컴파일 오류 및 런타임 오류가 해결되었습니다. 이제 애플리케이션에는 다음이 포함됩니다.
-*   **초기 인사말 메시지:** 컴포넌트 마운트 시 AI 인사말 메시지가 표시되며 음성(TTS)으로 안내됩니다.
-*   **연속 음성 인식:** 마이크가 연속 듣기(continuous listening)를 위해 구성되었습니다.
-*   **음성 및 텍스트 안내:** 모든 안내 메시지(초기 인사말, 듣기 시작 메시지, AI 응답, 오류 메시지)는 음성(TTS)과 텍스트(채팅)로 동시에 안내됩니다.
-*   **오류 처리:** `Failed to execute 'start' on 'SpeechRecognition': recognition has already started.` 런타임 오류는 연속 듣기 로직을 개선하여 해결되었습니다.
-*   **코드 품질:** `useEffect` 종속성 경고가 해결되었고, 안정적인 함수를 위해 `useCallback`이 사용되었습니다.
+### 2. 문제 해결 시도 및 변경 내역 (역순)
 
-## 변경 사항
+*   **2025-10-27 (최신)**
+    *   **변경:** `api/package.json` 파일 추가. API 폴더에 Node.js `engines`를 `18.x`로 명시하여 Vercel 빌드 시 Node.js 버전 문제를 해결 시도.
+    *   **관련 오류:** `Error: Found invalid Node.js Version: "22.x". Please set Node.js Version to 18.x`
+*   **2025-10-27**
+    *   **변경:** `vercel.json` 파일의 `functions` 섹션에 `@vercel/node` 런타임 버전을 `@vercel/node@3.0.0`으로 명시.
+    *   **관련 오류:** `Error: Function Runtimes must have a valid version, for example now-php@1.0.0.`
+*   **2025-10-27**
+    *   **변경:** `vercel.json` 파일 수정. `builds` 속성에서 프론트엔드 빌드 정의를 제거하고, `functions` 속성으로 API 함수를 정의. 프론트엔드는 Vercel의 자동 감지에 의존하도록 변경.
+    *   **관련 오류:** Vercel 프로젝트 생성 시 `The functions property cannot be used in conjunction with the builds property.` 오류 발생.
+*   **2025-10-27**
+    *   **변경:** `vercel.json` 파일의 `routes` 섹션 수정. `dest` 경로에서 `/frontend/app/build/` 접두사를 제거하여 빌드 결과물 루트 기준으로 경로를 지정. (예: `/index.html`, `/static/$1`).
+    *   **관련 오류:** `404 Not Found` (채팅창 자체가 로드되지 않음, `favicon.ico` 등 정적 파일 404).
+*   **2025-10-27**
+    *   **변경:** `vercel.json` 파일의 `routes` 섹션 수정. `dest` 경로에서 `.js` 확장자 제거 (예: `/api/process-command.js` -> `/api/process-command`).
+    *   **관련 오류:** `404 Not Found` (Vercel-specific 404 페이지).
+*   **2025-10-27**
+    *   **변경:** `frontend/app/src/components/ChatInterface.tsx` 파일 수정.
+        *   `useCallback` 의존성 배열에 `currentOrder` 추가.
+        *   `setRemainingPickupTime` 변수에 `eslint-disable-next-line` 주석 추가.
+    *   **관련 오류:** Vercel 빌드 실패 (린팅 오류).
+*   **2025-10-27**
+    *   **변경:** 프로젝트 루트에 `vercel.json` 파일 생성. `builds` 및 `routes` 속성을 포함하여 모노레포 빌드 및 라우팅 설정.
+    *   **변경:** `api/process-command.js` 파일의 내용을 원래의 백엔드 로직으로 복구 (디버깅 코드 제거).
+    *   **관련 오류:** `405 Method Not Allowed` (여전히 `index.html`이 응답).
+*   **2025-10-27**
+    *   **변경:** `api/process-command.js` 파일에 진단용 로깅 코드 추가. (요청 `method`, `headers`, `body` 반환).
+    *   **관련 오류:** `405 Method Not Allowed` (Vercel이 `index.html`을 응답).
+*   **2025-10-27**
+    *   **변경:** `api/process-command.js` 파일의 `module.exports`를 `export default`로 변경.
+    *   **관련 오류:** `405 Method Not Allowed` (Vercel이 `index.html`을 응답).
+*   **2025-10-27**
+    *   **변경:** `api/process-command.js` 파일의 백엔드 로직을 Vercel 서버리스 함수 형식으로 리팩토링 (`express` 제거, `module.exports` 사용).
+    *   **관련 오류:** `405 Method Not Allowed` (Vercel 배포 후).
+*   **2025-10-27**
+    *   **변경:** 모든 프로젝트 파일 초기 커밋 및 푸시.
 
-### `src/hooks/useVoiceRecognition.ts`
-*   **`resetTranscript` 함수 추가:** 음성 인식 스크립트를 지우는 전용 함수입니다.
-*   **널(null) 검사 추가:** `recognitionRef.current`의 속성에 접근하기 전에 널이 아닌지 확인했습니다.
-*   **연속 듣기 재도입:** `onend` 및 `onerror` 콜백을 수정하여 `isListeningRef.current`가 true인 경우 음성 인식을 다시 시작하도록 하여 연속 듣기를 활성화했습니다.
-*   **`useEffect` 종속성 개선:** `isListeningRef`를 사용하여 음성 인식 객체의 불필요한 재초기화를 방지했습니다.
-*   **클린업 함수 업데이트:** `useEffect` 클린업이 `stopListening()`을 호출하는 대신 `recognitionRef.current`를 직접 중지하도록 변경했습니다.
+### 3. 현재 상태
 
-### `src/components/ChatInterface.tsx`
-*   **`useVoiceRecognition` 구조 분해 할당 업데이트:** `resetTranscript` 및 `speak`를 포함하고 `hasSupport`를 제거했습니다.
-*   **접근성 관련 상태 제거:** `isAwaitingAccessibilityResponse` 및 `isVisuallyImpairedMode` 상태 변수를 제거했습니다.
-*   **`AccessibilityNewIcon` import 제거:** 사용되지 않는 아이콘 import를 제거했습니다.
-*   **JSX에서 `hasSupport` 검사 제거:** 브라우저 지원은 훅 내부에서 처리되므로 마이크 버튼 렌더링을 단순화했습니다.
-*   **접근성 토글 버튼 제거:** 접근성 모드가 필요 없으므로 관련 토글 버튼을 제거했습니다.
-*   **`handleSendMessage` 이동:** `TS2448` 오류를 해결하기 위해 `handleSendMessage` 함수를 `useEffect`에서 사용하기 전에 재배치했습니다.
-*   **`handleSendMessage`를 `useCallback`으로 래핑:** 성능을 개선하고 `useEffect` 종속성 경고를 해결했습니다.
-*   **초기 인사말 메시지 추가:** 컴포넌트 마운트 시 AI 인사말을 표시하는 `useEffect`를 구현했습니다.
-*   **초기 메시지를 위한 `useRef` 구현:** React의 `StrictMode`에서 초기 인사말이 두 번 나타나는 것을 방지하기 위해 ref를 사용했습니다.
-*   **초기 인사말에 TTS 통합:** 초기 인사말이 이제 무조건 소리 내어 말해집니다.
-*   **`handleMicClick`에서 TTS 및 채팅 메시지 무조건 추가:** 마이크 클릭 시 "듣는 중..." 메시지가 무조건 음성 및 텍스트로 안내됩니다.
-*   **`isAwaitingAccessibilityResponse` 관련 로직 제거:** 침묵 타이머 `useEffect`에서 `isAwaitingAccessibilityResponse` 관련 조건 및 종속성을 제거했습니다.
+*   Vercel 빌드 시 Node.js 버전 오류 (`Error: Found invalid Node.js Version: "22.x". Please set Node.js Version to 18.x`).
+*   `api/package.json`을 통해 Node.js 18.x 버전을 명시적으로 지정하는 변경사항을 푸시한 상태.
 
-### `src/store/chatStore.ts`
-*   이 파일에는 직접적인 변경 사항이 없지만, `addMessage` 함수는 이제 초기 인사말에 사용됩니다.
+### 4. 다음 단계
 
-## 향후 작업
-
-1.  **연속 듣기 개선:** 연속 듣기가 활성화되었지만, 특히 시끄러운 환경이나 긴 침묵 기간 동안 원활한 사용자 경험을 보장하기 위해 추가 테스트 및 개선이 필요할 수 있습니다.
-2.  **사용자 설정:** 사용자가 음성 안내 활성화/비활성화 등 특정 설정을 제어할 수 있는 방법을 구현합니다.
-3.  **백엔드 통합:** AI 키오스크의 핵심 기능(주문 처리, 메뉴 조회 등)을 위한 백엔드와의 통합을 진행합니다.
-4.  **종합적인 오류 처리:** 모든 사용자 상호 작용에 대한 오류 처리를 검토하고 개선하여 명확하고 실행 가능한 피드백을 제공합니다.
-5.  **UI/UX 개선:** 전반적인 사용자 인터페이스 및 사용자 경험을 지속적으로 개선합니다.
+1.  **Vercel 프로젝트 다시 생성:** Vercel에서 프로젝트를 다시 생성하는 과정을 처음부터 진행.
+2.  **'Root Directory' 확인:** 프로젝트 생성 시 'Root Directory' 설정이 **반드시 비어 있는지** 다시 한번 확인.
+3.  **배포 완료 대기:** Vercel 대시보드에서 새 배포가 완료되어 상태가 **'Ready'** 가 될 때까지 기다림.
+4.  **웹사이트 테스트:** 배포 완료 후 웹사이트에서 **강력 새로고침** (`Ctrl`+`Shift`+`R` 또는 `Cmd`+`Shift`+`R`)을 한 후 다시 테스트.
