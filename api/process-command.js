@@ -1,12 +1,3 @@
-const express = require('express');
-const cors = require('cors');
-
-const app = express();
-
-// Vercel은 body-parser를 내장하고 있으므로 express.json()만 사용해도 충분합니다.
-app.use(cors());
-app.use(express.json());
-
 // --- Mock 데이터베이스 (변경 없음) ---
 const stores = [
   {
@@ -54,7 +45,6 @@ const calculateTotalPrice = (order) => {
     total += itemPrice;
   });
   order.totalPrice = total;
-  // 상태 객체를 직접 수정했으므로 반환은 필수는 아니지만, 명시적으로 반환할 수 있습니다.
   return order;
 };
 
@@ -102,8 +92,6 @@ const handleStoreSelection = (lowerMessage, currentOrder) => {
 // --- Main Logic Function (상태를 인자로 받고, 새로운 상태를 반환) ---
 const processMessage = (message, currentOrder) => {
   const lowerMessage = message.toLowerCase();
-
-  // 헬퍼 함수들이 이제 currentOrder를 직접 수정하므로, 깊은 복사를 통해 원본 상태를 보호합니다.
   let newOrder = JSON.parse(JSON.stringify(currentOrder));
 
   const storeSelectionResult = handleStoreSelection(lowerMessage, newOrder);
@@ -114,9 +102,6 @@ const processMessage = (message, currentOrder) => {
   if (!targetStore && newOrder.storeId) {
     targetStore = stores.find(s => s.id === newOrder.storeId);
   }
-
-  // 각 핸들러 함수들도 newOrder 객체를 인자로 받아야 합니다.
-  // (내부 로직은 간결함을 위해 생략, server.js와 동일하며 newOrder를 사용한다고 가정)
 
   const handleMenuDisplay = (lowerMessage, targetStore) => {
     if (lowerMessage.includes('메뉴')) {
@@ -278,25 +263,28 @@ const processMessage = (message, currentOrder) => {
   return { reply: '죄송합니다. 잘 이해하지 못했어요. 다시 말씀해주시겠어요?', newOrder };
 };
 
+// Vercel Serverless Function Handler
+module.exports = (req, res) => {
+  // We only want to handle POST requests
+  if (req.method === 'POST') {
+    // The logic from the old app.post() goes here
+    const { message, currentState } = req.body;
 
-// --- API Endpoint ---
-app.post('/api/process-command', (req, res) => {
-  const { message, currentState } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
 
-  if (!message) {
-    return res.status(400).json({ error: 'Message is required' });
+    // 프론트에서 받은 상태를 사용하거나, 없다면 초기 상태를 사용합니다.
+    const orderState = currentState || getInitialOrderState();
+
+    const { reply, newOrder } = processMessage(message, orderState);
+    
+    // 처리 후의 새로운 상태를 프론트엔드로 다시 보내줍니다.
+    res.status(200).json({ reply, currentOrder: newOrder });
+
+  } else {
+    // Handle any other HTTP method
+    res.setHeader('Allow', ['POST']);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-
-  // 프론트에서 받은 상태를 사용하거나, 없다면 초기 상태를 사용합니다.
-  const orderState = currentState || getInitialOrderState();
-
-  const { reply, newOrder } = processMessage(message, orderState);
-  
-  // 처리 후의 새로운 상태를 프론트엔드로 다시 보내줍니다.
-  res.json({ reply, currentOrder: newOrder });
-});
-
-// app.listen(...) 부분은 Vercel에서 필요 없으므로 삭제합니다.
-
-// Vercel이 함수를 실행할 수 있도록 app을 export합니다.
-module.exports = app;
+};
