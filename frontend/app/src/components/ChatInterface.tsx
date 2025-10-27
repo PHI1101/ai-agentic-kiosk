@@ -31,6 +31,7 @@ const ChatInterface: React.FC = () => {
   const { transcript, isListening, startListening, stopListening, resetTranscript, speak } = useVoiceRecognition();
   const [inputValue, setInputValue] = useState('');
   const [currentOrder, setCurrentOrder] = useState<CurrentOrder | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [remainingPickupTime, setRemainingPickupTime] = useState<number | null>(null);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   const hasInitialMessageBeenAdded = useRef(false);
@@ -62,7 +63,7 @@ const ChatInterface: React.FC = () => {
     }
 
     setInputValue('');
-  }, [inputValue, addMessage, speak, setCurrentOrder, setInputValue]);
+  }, [inputValue, addMessage, speak, currentOrder, setCurrentOrder, setInputValue]);
 
   // 음성 입력 자동 전송 로직 (정지 감지) - 모든 모드에서 continuous: true
   useEffect(() => {
