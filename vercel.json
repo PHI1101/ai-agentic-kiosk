@@ -9,5 +9,11 @@
       "src": "api/process-command.js",
       "use": "@vercel/node"
     }
+  ],
+  "routes": [
+    {
+      "src": "/api/process-command",
+      "dest": "/api/process-command.js"
+    }
   ]
 }
