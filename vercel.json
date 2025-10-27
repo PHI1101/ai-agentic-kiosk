@@ -5,15 +5,6 @@
       "runtime": "@vercel/node"
     }
   },
-  "builds": [
-    {
-      "src": "frontend/app",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
-    }
-  ],
   "routes": [
     {
       "src": "/api/(.*)",
