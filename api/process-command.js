@@ -264,7 +264,7 @@ const processMessage = (message, currentOrder) => {
 };
 
 // Vercel Serverless Function Handler
-module.exports = (req, res) => {
+export default (req, res) => {
   // We only want to handle POST requests
   if (req.method === 'POST') {
     // The logic from the old app.post() goes here
