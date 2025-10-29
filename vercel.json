@@ -19,30 +19,11 @@
       "dest": "api/process-command.js"
     },
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/(.*)",
       "dest": "/frontend/app/build/index.html"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/static/(.*)",
-      "destination": "/frontend/app/build/static/$1"
-    },
-    {
-      "source": "/favicon.ico",
-      "destination": "/frontend/app/build/favicon.ico"
-    },
-    {
-      "source": "/manifest.json",
-      "destination": "/frontend/app/build/manifest.json"
-    },
-    {
-      "source": "/logo192.png",
-      "destination": "/frontend/app/build/logo192.png"
-    },
-    {
-      "source": "/logo512.png",
-      "destination": "/frontend/app/build/logo512.png"
     }
   ]
 }
