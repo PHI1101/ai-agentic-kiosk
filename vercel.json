@@ -17,6 +17,10 @@
     {
       "src": "/api/process-command",
       "dest": "api/process-command.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/app"
     }
   ]
 }
