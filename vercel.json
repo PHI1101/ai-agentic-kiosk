@@ -2,14 +2,6 @@
   "version": 2,
   "builds": [
     {
-      "src": "frontend/app/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "buildCommand": "npm run build",
-        "outputDirectory": "frontend/app/build"
-      }
-    },
-    {
       "src": "api/process-command.js",
       "use": "@vercel/node"
     }
