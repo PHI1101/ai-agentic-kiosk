@@ -20,27 +20,27 @@
     },
     {
       "src": "/static/(.*)",
-      "dest": "/static/$1"
+      "dest": "frontend/app/build/static/$1"
     },
     {
       "src": "/favicon.ico",
-      "dest": "/favicon.ico"
+      "dest": "frontend/app/build/favicon.ico"
     },
     {
       "src": "/manifest.json",
-      "dest": "/manifest.json"
+      "dest": "frontend/app/build/manifest.json"
     },
     {
       "src": "/logo192.png",
-      "dest": "/logo192.png"
+      "dest": "frontend/app/build/logo192.png"
     },
     {
       "src": "/logo512.png",
-      "dest": "/logo512.png"
+      "dest": "frontend/app/build/logo512.png"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "frontend/app/build/index.html"
     }
   ]
 }
