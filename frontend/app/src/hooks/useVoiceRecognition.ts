@@ -1,20 +1,36 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface VoiceRecognitionHook {
   transcript: string;
   isListening: boolean;
   startListening: () => void;
   stopListening: () => void;
-  resetTranscript: () => void;
   speak: (text: string) => void;
 }
 
-const useVoiceRecognition = (): VoiceRecognitionHook => {
+// Define the props for the hook, including the onSend callback
+interface VoiceRecognitionProps {
+  onSend: (transcript: string) => void;
+}
+
+const useVoiceRecognition = ({ onSend }: VoiceRecognitionProps): VoiceRecognitionHook => {
   const [transcript, setTranscript] = useState<string>('');
   const [isListening, setIsListening] = useState<boolean>(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
-  const isContinuousListening = useRef(false); // New ref to track continuous listening intent
+  
+  // Ref to hold the timer for silence detection
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref to hold the final transcript that accumulates
+  const finalTranscriptRef = useRef<string>('');
+
+  const speak = useCallback((text: string) => {
+    if (synthRef.current) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ko-KR';
+      synthRef.current.speak(utterance);
+    }
+  }, []);
 
   useEffect(() => {
     if (!('webkitSpeechRecognition' in window) || !('speechSynthesis' in window)) {
@@ -22,75 +38,83 @@ const useVoiceRecognition = (): VoiceRecognitionHook => {
       return;
     }
 
-    recognitionRef.current = new (window as any).webkitSpeechRecognition();
-    if (recognitionRef.current) { // Add null check here
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'ko-KR';
-
-      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
-        }
-        setTranscript(finalTranscript || interimTranscript);
-      };
-
-      recognitionRef.current.onend = () => {
-        // Restart listening if continuous listening is intended
-        if (isContinuousListening.current) { recognitionRef.current?.start(); }
-      };
-
-      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error', event);
-        // Restart listening if continuous listening is intended
-        if (isContinuousListening.current) { recognitionRef.current?.start(); }
-      };
-    }
+    const recognition = new (window as any).webkitSpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'ko-KR';
+    recognitionRef.current = recognition;
 
     synthRef.current = window.speechSynthesis;
 
-    return () => {
-      recognitionRef.current?.stop();
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      // Clear the silence timer on any new result
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscriptRef.current += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      
+      // Update the display with the latest transcript (final + interim)
+      setTranscript(finalTranscriptRef.current + interimTranscript);
+
+      // Set a new timer to send the message after 1.5s of silence
+      silenceTimerRef.current = setTimeout(() => {
+        if (finalTranscriptRef.current) {
+          onSend(finalTranscriptRef.current.trim());
+          finalTranscriptRef.current = ''; // Reset the final transcript
+          setTranscript(''); // Reset the display transcript
+        }
+      }, 1500);
     };
-  }, []);
+
+    recognition.onend = () => {
+      if (isListening) {
+        recognition.start();
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error', event);
+      if (isListening) {
+        recognition.start(); // Attempt to restart on error if still supposed to be listening
+      }
+    };
+
+    return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+      recognition.stop();
+    };
+  }, [isListening, onSend]);
 
   const startListening = () => {
     if (recognitionRef.current && !isListening) {
-      setTranscript(''); // Reset transcript on start
-      recognitionRef.current.start();
+      finalTranscriptRef.current = '';
+      setTranscript('');
       setIsListening(true);
-      isContinuousListening.current = true; // Set continuous listening intent
+      recognitionRef.current.start();
     }
   };
 
   const stopListening = () => {
     if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
       setIsListening(false);
-      isContinuousListening.current = false; // Clear continuous listening intent
+      recognitionRef.current.stop();
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
     }
   };
 
-  const resetTranscript = () => {
-    setTranscript('');
-  };
-
-  const speak = (text: string) => {
-    if (synthRef.current) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ko-KR';
-      synthRef.current.speak(utterance);
-    }
-  };
-
-  return { transcript, isListening, startListening, stopListening, resetTranscript, speak };
+  return { transcript, isListening, startListening, stopListening, speak };
 };
 
 export default useVoiceRecognition;
