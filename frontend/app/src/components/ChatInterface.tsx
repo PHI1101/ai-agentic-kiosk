@@ -73,7 +73,7 @@ const ChatInterface: React.FC = () => {
   // Speak the latest AI message
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.sender === 'ai' && messages.length > lastMessageCount.current) {
+        if (lastMessage && lastMessage.sender === 'bot' && messages.length > lastMessageCount.current) {
       speak(lastMessage.text);
     }
     lastMessageCount.current = messages.length;

@@ -3,7 +3,7 @@ import { Paper, Typography } from '@mui/material';
 
 interface MessageBubbleProps {
   text: string;
-  sender: 'user' | 'ai';
+  sender: 'user' | 'bot';
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ text, sender }) => {
