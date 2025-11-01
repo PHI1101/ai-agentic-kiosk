@@ -1,39 +1,8 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/process-command.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/$1"
-    },
-    {
-      "src": "/static/(.*)",
-      "dest": "/frontend/app/build/static/$1"
-    },
-    {
-      "src": "/favicon.ico",
-      "dest": "/frontend/app/build/favicon.ico"
-    },
-    {
-      "src": "/manifest.json",
-      "dest": "/frontend/app/build/manifest.json"
-    },
-    {
-      "src": "/logo192.png",
-      "dest": "/frontend/app/build/logo192.png"
-    },
-    {
-      "src": "/logo512.png",
-      "dest": "/frontend/app/build/logo512.png"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/app/build/index.html"
+      "source": "/api/:path*",
+      "destination": "$RAILWAY_BACKEND_URL/:path*"
     }
   ]
 }
