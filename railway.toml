@@ -2,5 +2,5 @@
 builder = "NIXPACKS"
 
 [deploy]
-root = "backend"
-start = "gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 3"
+rootDirectory = "backend"
+startCommand = "gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 3"
