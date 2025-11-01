@@ -46,14 +46,14 @@ const ChatInterface: React.FC = () => {
       
       const { reply, currentOrder: updatedOrder } = response.data;
 
-      addMessage({ text: reply, sender: 'ai' });
+      addMessage({ text: reply, sender: 'bot' });
       if (updatedOrder) {
         setCurrentOrder(updatedOrder);
       }
 
     } catch (error) {
       console.error('Error sending message to backend:', error);
-      addMessage({ text: '죄송합니다. 서버와 통신 중 오류가 발생했습니다.', sender: 'ai' });
+      addMessage({ text: '죄송합니다. 서버와 통신 중 오류가 발생했습니다.', sender: 'bot' });
     }
   }, [addMessage, currentOrder]);
 
@@ -64,7 +64,7 @@ const ChatInterface: React.FC = () => {
     if (!hasInitialMessageBeenAdded.current) {
       startListening();
       const greeting = "안녕하세요! 주문을 도와드릴 AI 키오스크입니다. 무엇을 도와드릴까요?";
-      addMessage({ text: greeting, sender: 'ai' });
+      addMessage({ text: greeting, sender: 'bot' });
       hasInitialMessageBeenAdded.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
