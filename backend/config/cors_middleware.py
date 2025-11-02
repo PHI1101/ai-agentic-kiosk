@@ -1,1 +1,8 @@
-# This file is created to resolve a ModuleNotFoundError
+
+class ManualCorsMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        return response
