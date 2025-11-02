@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "$RAILWAY_BACKEND_URL/:path*"
+      "destination": "https://ai-kiosk-backend-production.up.railway.app/api/:path*"
     }
   ]
 }
