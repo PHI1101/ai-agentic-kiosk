@@ -16,9 +16,8 @@ module.exports = async (req, res) => {
     });
     res.status(response.status).json(response.data);
   } catch (error) {
-    const axiosError = error as import('axios').AxiosError;
-    if (axiosError.response) {
-      res.status(axiosError.response.status).json(axiosError.response.data);
+    if (axios.isAxiosError(error) && error.response) {
+      res.status(error.response.status).json(error.response.data);
     } else {
       console.error('Proxy error:', error);
       res.status(500).json({ message: 'An internal server error occurred in the proxy.' });
