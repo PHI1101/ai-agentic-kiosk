@@ -39,7 +39,7 @@ const ChatInterface: React.FC = () => {
     setInputValue('');
 
     try {
-      const response = await axios.post('/api/orders/process-command/', { 
+      const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/process-command/', { 
         message: text, 
         currentState: currentOrder 
       });
