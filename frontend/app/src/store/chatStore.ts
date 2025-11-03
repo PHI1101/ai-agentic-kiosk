@@ -23,17 +23,17 @@ const useChatStore = create<ChatState>((set) => ({
     }));
 
     // If the message is from the user, simulate an AI response for testing TTS
-    if (message.sender === 'user') {
-      setTimeout(() => {
-        const aiResponse = `"${message.text}" 라고 말씀하셨네요.`;
-        set((state) => ({
-          messages: [
-            ...state.messages,
-            { id: state.messages.length, text: aiResponse, sender: 'ai' },
-          ],
-        }));
-      }, 1000); // 1-second delay
-    }
+    // if (message.sender === 'user') {
+    //   setTimeout(() => {
+    //     const aiResponse = `"${message.text}" 라고 말씀하셨네요.`;
+    //     set((state) => ({
+    //       messages: [
+    //         ...state.messages,
+    //         { id: state.messages.length, text: aiResponse, sender: 'ai' },
+    //       ],
+    //     }));
+    //   }, 1000); // 1-second delay
+    // }
   },
 }));
 
