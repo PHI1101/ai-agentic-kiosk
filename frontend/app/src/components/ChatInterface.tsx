@@ -39,10 +39,13 @@ const ChatInterface: React.FC = () => {
     setInputValue('');
 
     try {
-      const response = await axios.post('/api/orders/process-command/', { 
-        message: text, 
-        currentState: currentOrder 
-      });
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL || "https://ai-kiosk-backend-production.up.railway.app/api"}/orders/process-command/`,
+        { 
+          message: text, 
+          currentState: currentOrder 
+        }
+      );
       
       const { reply, currentOrder: updatedOrder } = response.data;
 
