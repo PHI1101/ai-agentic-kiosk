@@ -1,11 +1,6 @@
+const axios = require('axios');
 
-import type { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+module.exports = async (req, res) => {
   // We only want to handle POST requests, reject others
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -27,6 +22,7 @@ export default async function handler(
 
   } catch (error) {
     // Handle errors from the backend request
+    // Check if it's an axios error
     if (axios.isAxiosError(error) && error.response) {
       res.status(error.response.status).json(error.response.data);
     } else {
@@ -34,4 +30,4 @@ export default async function handler(
       res.status(500).json({ message: 'An internal server error occurred in the proxy.' });
     }
   }
-}
+};
