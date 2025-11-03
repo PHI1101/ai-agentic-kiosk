@@ -57,6 +57,29 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     'https://ai-agentic-kiosk.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 ROOT_URLCONF = 'config.urls'
