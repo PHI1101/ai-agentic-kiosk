@@ -39,7 +39,7 @@ const ChatInterface: React.FC = () => {
     setInputValue('');
 
     try {
-      const response = await axios.post('/api/orders/process-command/', { 
+      const response = await axios.post('/api/proxy', { 
         message: text, 
         currentState: currentOrder 
       });
