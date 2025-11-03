@@ -1,6 +1,6 @@
 import React from 'react';
 import { Container, Typography } from '@mui/material';
-import ChatInterface from '../components/ChatInterface';
+import ChatInterface from '@/components/ChatInterface';
 
 const MainPage: React.FC = () => {
   return (
