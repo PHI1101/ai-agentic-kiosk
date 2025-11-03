@@ -1,6 +1,7 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
 const axios = require('axios');
 
-module.exports = async (req, res) => {
+module.exports = async (req: NextApiRequest, res: NextApiResponse) => {
   // We only want to handle POST requests, reject others
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -20,9 +21,8 @@ module.exports = async (req, res) => {
     // Forward the response from the backend to the frontend client
     res.status(response.status).json(response.data);
 
-  } catch (error) {
+  } catch (error: unknown) {
     // Handle errors from the backend request
-    // Check if it's an axios error
     if (axios.isAxiosError(error) && error.response) {
       res.status(error.response.status).json(error.response.data);
     } else {
