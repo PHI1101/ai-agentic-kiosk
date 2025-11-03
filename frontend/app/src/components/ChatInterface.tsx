@@ -70,25 +70,87 @@ const ChatInterface: React.FC = () => {
         break;
       case 'STORE_SELECTED':
       case 'WAITING_FOR_ORDER':
-        if (text.includes('김밥') && updatedOrder?.storeName === '김밥천국') {
-          const item: OrderItem = { name: '김밥', quantity: 1, price: 3000 };
-          updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-          reply = `김밥 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 라면 하나 추가 / 결제할게요)`;
-          setConversationState('WAITING_FOR_ORDER');
-        } else if (text.includes('라면') && updatedOrder?.storeName === '김밥천국') {
-          const item: OrderItem = { name: '라면', quantity: 1, price: 4000 };
-          updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-          reply = `라면 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 김밥 하나 추가 / 결제할게요)`;
-          setConversationState('WAITING_FOR_ORDER');
-        } else if (text.includes('결제') || text.includes('주문할게요')) {
-          if (updatedOrder && updatedOrder.items.length > 0) {
-            reply = `총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 어떤 방식으로 결제하시겠어요? (예: 카드로 결제할게요)`;
-            setConversationState('WAITING_FOR_PAYMENT_METHOD');
+        // Handle ordering for 김밥천국
+        if (updatedOrder?.storeName === '김밥천국') {
+          if (text.includes('김밥')) {
+            const item: OrderItem = { name: '김밥', quantity: 1, price: 3000 };
+            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
+            reply = `김밥 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 라면 하나 추가 / 결제할게요)`;
+            setConversationState('WAITING_FOR_ORDER');
+          } else if (text.includes('라면')) {
+            const item: OrderItem = { name: '라면', quantity: 1, price: 4000 };
+            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
+            reply = `라면 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 김밥 하나 추가 / 결제할게요)`;
+            setConversationState('WAITING_FOR_ORDER');
+          } else if (text.includes('결제') || text.includes('주문할게요')) {
+            if (updatedOrder && updatedOrder.items.length > 0) {
+              reply = `총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 어떤 방식으로 결제하시겠어요? (예: 카드로 결제할게요)`;
+              setConversationState('WAITING_FOR_PAYMENT_METHOD');
+            } else {
+              reply = '주문하신 메뉴가 없습니다. 메뉴를 먼저 선택해주세요. (예: 김밥 한 줄 주세요)';
+            }
           } else {
-            reply = '주문하신 메뉴가 없습니다. 메뉴를 먼저 선택해주세요. (예: 김밥 한 줄 주세요)';
+            reply = '주문할 메뉴를 말씀해주세요. (예: 김밥 한 줄 주세요)';
           }
-        } else {
-          reply = '주문할 메뉴를 말씀해주세요. (예: 김밥 한 줄 주세요)';
+        }
+        // Handle ordering for 버거킹
+        else if (updatedOrder?.storeName === '버거킹') {
+          if (text.includes('햄버거')) {
+            const item: OrderItem = { name: '햄버거', quantity: 1, price: 7000 };
+            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
+            reply = `햄버거 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 감자튀김 추가 / 결제할게요)`;
+            setConversationState('WAITING_FOR_ORDER');
+          } else if (text.includes('감자튀김')) {
+            const item: OrderItem = { name: '감자튀김', quantity: 1, price: 2500 };
+            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
+            reply = `감자튀김 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 콜라 추가 / 결제할게요)`;
+            setConversationState('WAITING_FOR_ORDER');
+          } else if (text.includes('콜라')) {
+            const item: OrderItem = { name: '콜라', quantity: 1, price: 2000 };
+            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
+            reply = `콜라 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 햄버거 추가 / 결제할게요)`;
+            setConversationState('WAITING_FOR_ORDER');
+          } else if (text.includes('결제') || text.includes('주문할게요')) {
+            if (updatedOrder && updatedOrder.items.length > 0) {
+              reply = `총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 어떤 방식으로 결제하시겠어요? (예: 카드로 결제할게요)`;
+              setConversationState('WAITING_FOR_PAYMENT_METHOD');
+            } else {
+              reply = '주문하신 메뉴가 없습니다. 메뉴를 먼저 선택해주세요. (예: 햄버거 하나 주세요)';
+            }
+          } else {
+            reply = '주문할 메뉴를 말씀해주세요. (예: 햄버거 하나 주세요)';
+          }
+        }
+        // Handle ordering for 스타벅스
+        else if (updatedOrder?.storeName === '스타벅스') {
+          if (text.includes('아메리카노')) {
+            const item: OrderItem = { name: '아메리카노', quantity: 1, price: 4500 };
+            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
+            reply = `아메리카노 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 라떼 추가 / 결제할게요)`;
+            setConversationState('WAITING_FOR_ORDER');
+          } else if (text.includes('라떼')) {
+            const item: OrderItem = { name: '라떼', quantity: 1, price: 5000 };
+            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
+            reply = `라떼 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 샌드위치 추가 / 결제할게요)`;
+            setConversationState('WAITING_FOR_ORDER');
+          } else if (text.includes('샌드위치')) {
+            const item: OrderItem = { name: '샌드위치', quantity: 1, price: 6000 };
+            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
+            reply = `샌드위치 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 아메리카노 추가 / 결제할게요)`;
+            setConversationState('WAITING_FOR_ORDER');
+          } else if (text.includes('결제') || text.includes('주문할게요')) {
+            if (updatedOrder && updatedOrder.items.length > 0) {
+              reply = `총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 어떤 방식으로 결제하시겠어요? (예: 카드로 결제할게요)`;
+              setConversationState('WAITING_FOR_PAYMENT_METHOD');
+            } else {
+              reply = '주문하신 메뉴가 없습니다. 메뉴를 먼저 선택해주세요. (예: 아메리카노 한 잔 주세요)';
+            }
+          } else {
+            reply = '주문할 메뉴를 말씀해주세요. (예: 아메리카노 한 잔 주세요)';
+          }
+        }
+        else {
+          reply = '선택하신 가게의 메뉴를 말씀해주세요.';
         }
         break;
       case 'WAITING_FOR_PAYMENT_METHOD':
