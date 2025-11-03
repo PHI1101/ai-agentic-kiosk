@@ -10,6 +10,9 @@ def simple_nlu(text):
     return {'intent': 'unknown'}
 
 class ProcessCommandView(APIView):
+    def get(self, request, *args, **kwargs):
+        return Response({'message': 'GET request successful'}, status=status.HTTP_200_OK)
+
     def post(self, request, *args, **kwargs):
         message = request.data.get('message', '')
         current_order_state = request.data.get('currentState')
