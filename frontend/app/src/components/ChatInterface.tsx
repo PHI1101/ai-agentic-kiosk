@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, TextField, IconButton, Paper, Typography, List, ListItem, ListItemText, Divider } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import SendIcon from '@mui/icons-material/Send';
-import useChatStore from '@/store/chatStore';
-import useVoiceRecognition from '@/hooks/useVoiceRecognition';
-import MessageBubble from '@/components/MessageBubble';
+import useChatStore from '../store/chatStore';
+import useVoiceRecognition from '../hooks/useVoiceRecognition';
+import MessageBubble from './MessageBubble';
 import axios from 'axios';
 
 // Type definitions for order state
@@ -39,7 +39,7 @@ const ChatInterface: React.FC = () => {
     setInputValue('');
 
     try {
-      const response = await axios.post('/api/proxy', { 
+      const response = await axios.post('/api/orders/process-command/', { 
         message: text, 
         currentState: currentOrder 
       });
