@@ -33,7 +33,7 @@ SECRET_KEY = 'django-insecure-)#%0xs*^p@927k9#gnxit+$*3#a!q8jir$xxwcz)2z(e(%=iym
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['.railway.app', 'ai-agentic-kiosk.vercel.app']
+ALLOWED_HOSTS = ['ai-agentic-kiosk-production.up.railway.app', 'ai-agentic-kiosk.vercel.app']
 
 
 # Application definition
@@ -90,6 +90,11 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://ai-agentic-kiosk-production.up.railway.app',
+    'https://ai-agentic-kiosk.vercel.app',
+]
 
 ROOT_URLCONF = 'config.urls'
 
