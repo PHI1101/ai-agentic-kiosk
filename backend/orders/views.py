@@ -108,4 +108,4 @@ class ChatWithAIView(APIView):
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
-            return JsonResponse({'error': f'Backend Error: {type(e).__name__} - {str(e)}'}, status=500)
+            return JsonResponse({'error': str(e)}, status=500)
