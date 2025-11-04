@@ -41,8 +41,9 @@ const ChatInterface: React.FC = () => {
 
     try {
       // Call the new AI backend endpoint
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';;
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
       const response = await axios.post(`${apiUrl}/api/orders/chat/`, {
+        history: messages,
         message: text
       });
 

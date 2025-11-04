@@ -85,20 +85,30 @@ class ChatWithAIView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             data = json.loads(request.body)
+            history = data.get('history', [])
             user_message = data.get('message')
 
             if not user_message:
                 return JsonResponse({'error': 'Message not provided'}, status=400)
 
             openai.api_key = settings.OPENAI_API_KEY
+
+            # 대화 기록을 OpenAI 형식으로 변환
+            conversation_history = [
+                {"role": "system", "content": "너는 노인과 장애인도 쉽게 사용할 수 있는 AI 키오스크야. 주문이 완료될 때까지 대화를 이어가며 친절하게 돕고, 중간에 끊기지 않도록 이전 대화를 기억해."}
+            ]
+
+            for message in history:
+                role = "user" if message.get("sender") == "user" else "assistant"
+                conversation_history.append({"role": role, "content": message.get("text")})
+            
+            # 현재 사용자 메시지 추가
+            conversation_history.append({"role": "user", "content": user_message})
             
             # OpenAI API 호출
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant for a kiosk."},
-                    {"role": "user", "content": user_message}
-                ]
+                messages=conversation_history
             )
             
             ai_response = response.choices[0].message.content
