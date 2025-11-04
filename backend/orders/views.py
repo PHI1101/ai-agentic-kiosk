@@ -2,6 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Store, MenuItem, Order, OrderItem
+import openai
+from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+import json
 
 # For simplicity, we'll use a mock NLU
 def simple_nlu(text):
@@ -73,3 +79,33 @@ class ProcessCommandView(APIView):
                 reply = f"주문 처리 중 오류가 발생했습니다: {e}"
 
         return Response({'reply': reply, 'currentOrder': updated_order_state}, status=status.HTTP_200_OK)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ChatWithAIView(APIView):
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            user_message = data.get('message')
+
+            if not user_message:
+                return JsonResponse({'error': 'Message not provided'}, status=400)
+
+            openai.api_key = settings.OPENAI_API_KEY
+            
+            # OpenAI API 호출
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant for a kiosk."},
+                    {"role": "user", "content": user_message}
+                ]
+            )
+            
+            ai_response = response.choices[0].message.content
+            
+            return JsonResponse({'reply': ai_response})
+
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)

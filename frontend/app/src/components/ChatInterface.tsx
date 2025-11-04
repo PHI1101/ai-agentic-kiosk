@@ -16,7 +16,7 @@ interface OrderItem {
 
 interface CurrentOrder {
   orderId: number | null;
-  storeName: string | null;
+  storeName:string | null;
   items: OrderItem[];
   totalPrice: number;
   status: string;
@@ -25,13 +25,13 @@ interface CurrentOrder {
 const ChatInterface: React.FC = () => {
   const { messages, addMessage } = useChatStore();
   const [inputValue, setInputValue] = useState('');
+  // The order state is kept for UI display, but is not updated by the new AI logic.
   const [currentOrder, setCurrentOrder] = useState<CurrentOrder | null>(null);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   const lastMessageCount = useRef(messages.length);
   const hasInitialMessageBeenAdded = useRef(false);
-  const [conversationState, setConversationState] = useState<string>('INITIAL'); // New state for conversation flow
 
-  // Function to send message to backend and update state
+  // Function to send message to the new AI backend
   const sendMessage = useCallback(async (text: string) => {
     if (text.trim() === '') return;
 
@@ -39,147 +39,26 @@ const ChatInterface: React.FC = () => {
     addMessage(userMessage);
     setInputValue('');
 
-    let reply = "죄송합니다. 무슨 말씀이신지 잘 모르겠어요.";
-    let updatedOrder = currentOrder;
+    try {
+      // Call the new AI backend endpoint
+      const apiUrl = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const response = await axios.post(`${apiUrl}/api/orders/chat/`, {
+        message: text
+      });
 
-    switch (conversationState) {
-      case 'INITIAL':
-        if (text.includes('가게') || text.includes('주변')) {
-          reply = '현재 고객님 주변에는 \'김밥천국\', \'버거킹\', \'스타벅스\'가 있습니다. 어느 가게를 선택하시겠어요? (예: 김밥천국)';
-          setConversationState('WAITING_FOR_STORE_SELECTION');
-        } else {
-          reply = '안녕하세요! 주문을 도와드릴 AI 키오스크입니다. 주변에 어떤 가게가 있는지 알려드릴까요? (예: 주변 가게 알려줘)';
-        }
-        break;
-      case 'WAITING_FOR_STORE_SELECTION':
-        if (text.includes('김밥천국')) {
-          reply = '\'김밥천국\'을 선택하셨습니다. 김밥천국의 메뉴는 김밥, 라면, 떡볶이, 돈까스 등이 있습니다. 무엇을 주문하시겠어요? (예: 김밥 한 줄 주세요)';
-          updatedOrder = { orderId: 1, storeName: '김밥천국', items: [], totalPrice: 0, status: 'pending' };
-          setConversationState('STORE_SELECTED');
-        } else if (text.includes('버거킹')) {
-          reply = '\'버거킹\'을 선택하셨습니다. 버거킹의 메뉴는 햄버거, 감자튀김, 콜라 등이 있습니다. 무엇을 주문하시겠어요? (예: 햄버거 하나 주세요)';
-          updatedOrder = { orderId: 2, storeName: '버거킹', items: [], totalPrice: 0, status: 'pending' };
-          setConversationState('STORE_SELECTED');
-        } else if (text.includes('스타벅스')) {
-          reply = '\'스타벅스\'를 선택하셨습니다. 스타벅스의 메뉴는 아메리카노, 라떼, 샌드위치 등이 있습니다. 무엇을 주문하시겠어요? (예: 아메리카노 한 잔 주세요)';
-          updatedOrder = { orderId: 3, storeName: '스타벅스', items: [], totalPrice: 0, status: 'pending' };
-          setConversationState('STORE_SELECTED');
-        } else {
-          reply = '어떤 가게를 선택하시겠어요? (예: 김밥천국)';
-        }
-        break;
-      case 'STORE_SELECTED':
-      case 'WAITING_FOR_ORDER':
-        // Handle ordering for 김밥천국
-        if (updatedOrder?.storeName === '김밥천국') {
-          if (text.includes('김밥')) {
-            const item: OrderItem = { name: '김밥', quantity: 1, price: 3000 };
-            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-            reply = `김밥 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 라면 하나 추가 / 결제할게요)`;
-            setConversationState('WAITING_FOR_ORDER');
-          } else if (text.includes('라면')) {
-            const item: OrderItem = { name: '라면', quantity: 1, price: 4000 };
-            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-            reply = `라면 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 김밥 하나 추가 / 결제할게요)`;
-            setConversationState('WAITING_FOR_ORDER');
-          } else if (text.includes('결제') || text.includes('주문할게요')) {
-            if (updatedOrder && updatedOrder.items.length > 0) {
-              reply = `총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 어떤 방식으로 결제하시겠어요? (예: 카드로 결제할게요)`;
-              setConversationState('WAITING_FOR_PAYMENT_METHOD');
-            } else {
-              reply = '주문하신 메뉴가 없습니다. 메뉴를 먼저 선택해주세요. (예: 김밥 한 줄 주세요)';
-            }
-          } else {
-            reply = '주문할 메뉴를 말씀해주세요. (예: 김밥 한 줄 주세요)';
-          }
-        }
-        // Handle ordering for 버거킹
-        else if (updatedOrder?.storeName === '버거킹') {
-          if (text.includes('햄버거')) {
-            const item: OrderItem = { name: '햄버거', quantity: 1, price: 7000 };
-            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-            reply = `햄버거 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 감자튀김 추가 / 결제할게요)`;
-            setConversationState('WAITING_FOR_ORDER');
-          } else if (text.includes('감자튀김')) {
-            const item: OrderItem = { name: '감자튀김', quantity: 1, price: 2500 };
-            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-            reply = `감자튀김 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 콜라 추가 / 결제할게요)`;
-            setConversationState('WAITING_FOR_ORDER');
-          } else if (text.includes('콜라')) {
-            const item: OrderItem = { name: '콜라', quantity: 1, price: 2000 };
-            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-            reply = `콜라 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 햄버거 추가 / 결제할게요)`;
-            setConversationState('WAITING_FOR_ORDER');
-          } else if (text.includes('결제') || text.includes('주문할게요')) {
-            if (updatedOrder && updatedOrder.items.length > 0) {
-              reply = `총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 어떤 방식으로 결제하시겠어요? (예: 카드로 결제할게요)`;
-              setConversationState('WAITING_FOR_PAYMENT_METHOD');
-            } else {
-              reply = '주문하신 메뉴가 없습니다. 메뉴를 먼저 선택해주세요. (예: 햄버거 하나 주세요)';
-            }
-          } else {
-            reply = '주문할 메뉴를 말씀해주세요. (예: 햄버거 하나 주세요)';
-          }
-        }
-        // Handle ordering for 스타벅스
-        else if (updatedOrder?.storeName === '스타벅스') {
-          if (text.includes('아메리카노')) {
-            const item: OrderItem = { name: '아메리카노', quantity: 1, price: 4500 };
-            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-            reply = `아메리카노 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 라떼 추가 / 결제할게요)`;
-            setConversationState('WAITING_FOR_ORDER');
-          } else if (text.includes('라떼')) {
-            const item: OrderItem = { name: '라떼', quantity: 1, price: 5000 };
-            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-            reply = `라떼 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 샌드위치 추가 / 결제할게요)`;
-            setConversationState('WAITING_FOR_ORDER');
-          } else if (text.includes('샌드위치')) {
-            const item: OrderItem = { name: '샌드위치', quantity: 1, price: 6000 };
-            updatedOrder = { ...updatedOrder, items: [...(updatedOrder?.items || []), item], totalPrice: (updatedOrder?.totalPrice || 0) + item.price };
-            reply = `샌드위치 1개를 주문에 추가했습니다. 현재 총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 더 주문하시겠어요? (예: 아메리카노 추가 / 결제할게요)`;
-            setConversationState('WAITING_FOR_ORDER');
-          } else if (text.includes('결제') || text.includes('주문할게요')) {
-            if (updatedOrder && updatedOrder.items.length > 0) {
-              reply = `총 금액은 ${updatedOrder.totalPrice.toLocaleString()}원입니다. 어떤 방식으로 결제하시겠어요? (예: 카드로 결제할게요)`;
-              setConversationState('WAITING_FOR_PAYMENT_METHOD');
-            } else {
-              reply = '주문하신 메뉴가 없습니다. 메뉴를 먼저 선택해주세요. (예: 아메리카노 한 잔 주세요)';
-            }
-          } else {
-            reply = '주문할 메뉴를 말씀해주세요. (예: 아메리카노 한 잔 주세요)';
-          }
-        }
-        else {
-          reply = '선택하신 가게의 메뉴를 말씀해주세요.';
-        }
-        break;
-      case 'WAITING_FOR_PAYMENT_METHOD':
-        if (text.includes('카드') || text.includes('신용카드')) {
-          reply = '카드 결제가 완료되었습니다. 주문 번호는 123번이며, 픽업은 15분 뒤인 11시 45분부터 가능합니다. 감사합니다!';
-          setConversationState('INITIAL'); // Reset conversation
-          updatedOrder = null; // Clear order
-        } else if (text.includes('현금')) {
-          reply = '현금 결제가 완료되었습니다. 주문 번호는 123번이며, 픽업은 15분 뒤인 11시 45분부터 가능합니다. 감사합니다!';
-          setConversationState('INITIAL');
-          updatedOrder = null;
-        } else if (text.includes('페이팔') || text.includes('PayPal')) {
-          reply = '페이팔 결제가 완료되었습니다. 주문 번호는 123번이며, 픽업은 15분 뒤인 11시 45분부터 가능합니다. 감사합니다!';
-          setConversationState('INITIAL');
-          updatedOrder = null;
-        } else {
-          reply = '어떤 결제 방식을 선택하시겠어요? (예: 카드로 결제할게요)';
-        }
-        break;
-      default:
-        reply = '죄송합니다. 현재 상태에서는 이해할 수 없는 요청입니다. (예: 주변 가게 알려줘)';
-        break;
-    }
+      const aiResponse = response.data.reply;
+      addMessage({ text: aiResponse, sender: 'ai' });
 
-    addMessage({ text: reply, sender: 'ai' });
-    if (updatedOrder) {
-      setCurrentOrder(updatedOrder);
+      // Note: The logic to update 'currentOrder' has been removed.
+      // The conversation flow is now managed by the AI.
+      // For future improvements, the AI could return structured data to update the order status.
+
+    } catch (error) {
+      console.error("Error communicating with the AI backend:", error);
+      const errorMessage = '죄송합니다, AI 서버와 통신하는 중 오류가 발생했습니다.';
+      addMessage({ text: errorMessage, sender: 'ai' });
     }
-  }, [addMessage, currentOrder, conversationState]);
+  }, [addMessage]);
 
   const { transcript, isListening, startListening, stopListening, speak } = useVoiceRecognition({ onSend: sendMessage });
 
@@ -187,7 +66,7 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     if (!hasInitialMessageBeenAdded.current) {
       startListening();
-      const greeting = "안녕하세요! 주문을 도와드릴 AI 키오스크입니다. 주변에 어떤 가게가 있는지 알려드릴까요?";
+      const greeting = "안녕하세요! 주문을 도와드릴 AI 키오스크입니다. 무엇을 도와드릴까요?";
       addMessage({ text: greeting, sender: 'ai' });
       hasInitialMessageBeenAdded.current = true;
     }
