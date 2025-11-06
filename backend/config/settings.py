@@ -119,9 +119,26 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
+# Manually read DATABASE_URL from .env for robustness
+db_url_from_env = None
+dotenv_path = Path(__file__).resolve().parent.parent / '.env'
+if dotenv_path.exists():
+    with open(dotenv_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('DATABASE_URL='):
+                db_url_value = line.split('=', 1)[1].strip()
+                if db_url_value.startswith('"') and db_url_value.endswith('"'):
+                    db_url_value = db_url_value[1:-1]
+                db_url_from_env = db_url_value
+                break
+
 DATABASES = {
     'default': dj_database_url.config(
-        default='sqlite:///db.sqlite3',
+        default=db_url_from_env or 'postgres://user:password@host:port/dbname', # Use value from .env or fallback placeholder
         conn_max_age=600
     )
 }

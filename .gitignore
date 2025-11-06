@@ -22,5 +22,6 @@ backend/.env
 # Python
 backend/venv/
 backend/db.sqlite3
+db.json
 **/*.pyc
 **/__pycache__/
