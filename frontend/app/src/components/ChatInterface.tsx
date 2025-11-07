@@ -29,13 +29,11 @@ const ChatInterface: React.FC = () => {
         message: text,
         currentState: useChatStore.getState().currentOrder, // Pass current global order state
       });
-      console.log('Backend response:', response.data);
 
       const aiResponse = response.data.reply;
       addMessage({ text: aiResponse, sender: 'ai' });
 
       if (response.data.currentOrder) {
-        console.log('Updating global order state with:', response.data.currentOrder);
         setCurrentOrder(response.data.currentOrder); // Update global order state
       }
 
