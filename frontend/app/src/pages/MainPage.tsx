@@ -56,6 +56,7 @@ const MainPage = () => {
       if (currentOrder) {
         setOrder(currentOrder); // Update order state from backend response
       }
+      resetTranscript(); // <--- Move resetTranscript here
 
     } catch (error) {
       console.error("Error sending command to backend:", error);
@@ -63,17 +64,18 @@ const MainPage = () => {
       addMessage({ sender: 'bot', text: errorText });
       speak(errorText);
       setAgentStatus('idle');
+      resetTranscript(); // <--- Also move it here for error cases
     }
-  }, [messages, addMessage, setOrder, speak]);
+  }, [messages, addMessage, setOrder, speak, resetTranscript]);
 
   // 음성 인식 결과 처리
   useEffect(() => {
     if (transcript) {
       addMessage({ sender: 'user', text: transcript });
       processUserCommand(transcript);
-      resetTranscript();
+      // resetTranscript(); // <--- Removed
     }
-  }, [transcript, addMessage, processUserCommand, resetTranscript]);
+  }, [transcript, addMessage, processUserCommand]); // resetTranscript removed from dependencies
 
   // 텍스트 입력 처리
   const handleTextInputSend = () => {

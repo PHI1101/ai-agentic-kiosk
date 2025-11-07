@@ -77,6 +77,12 @@ def simple_nlu(text, history=None):
             intent['intent'] = 'order_food'
             return intent
 
+    # 4. Check for order finalization intent
+    finalization_keywords = ['포장이요', '배달이요', '주문 완료', '결제는요', '결제할게요']
+    if any(keyword in text for keyword in finalization_keywords):
+        intent['intent'] = 'order_finalized'
+        return intent
+
     return intent
 
 # --- API Views ---
@@ -164,9 +170,30 @@ class ChatWithAIView(APIView):
 
             # --- Order Intent Detection and Processing ---
             nlu_result = simple_nlu(user_message, history)
-            updated_order_state = current_order_state
+            updated_order_state = current_order_state # Initialize with current state
 
-            if nlu_result['intent'] == 'order_food' and nlu_result['item']:
+            if nlu_result['intent'] == 'order_finalized':
+                if current_order_state and current_order_state.get('orderId'):
+                    try:
+                        order = Order.objects.get(id=current_order_state['orderId'])
+                        order.status = 'completed' # Mark order as completed in DB
+                        order.save()
+                        # Optionally, delete order items or the order itself if not needed for history
+                    except Order.DoesNotExist:
+                        pass # Order already gone or never existed
+                
+                # Clear the order state for the frontend
+                updated_order_state = {
+                    'orderId': None,
+                    'storeName': None,
+                    'items': [],
+                    'totalPrice': 0,
+                    'status': 'completed' # Indicate completion
+                }
+                reply = "주문이 완료되었습니다. 감사합니다!" # Or a more specific message
+                return Response({'reply': reply, 'currentOrder': updated_order_state})
+
+            elif nlu_result['intent'] == 'order_food' and nlu_result['item']:
                 item_name = nlu_result['item']
                 try:
                     menu_item = MenuItem.objects.filter(name__icontains=item_name).first()
