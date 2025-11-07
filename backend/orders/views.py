@@ -272,7 +272,7 @@ class ChatWithAIView(APIView):
                         if '티' in item.name: available_categories.add('음료')
                         if '라떼' in item.name: available_categories.add('음료')
                         if '베이글' in item.name: available_categories.add('베이커리')
-                        if '크로와상' in item.actions.add('베이커리')
+                        if '크로와상' in item.name: available_categories.add('베이커리')
                         if '샌드위치' in item.name: available_categories.add('샌드위치')
                         if '과일' in item.name: available_categories.add('과일')
                 
