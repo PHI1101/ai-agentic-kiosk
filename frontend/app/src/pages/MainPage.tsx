@@ -39,10 +39,12 @@ const MainPage = () => {
     setAgentStatus('thinking');
 
     try {
+      const { setOrder, clearCart, ...orderData } = useOrderStore.getState();
+
       const response = await axios.post('/api/orders/chat/', {
         message: command,
         history: messages.slice(-10), // Send last 10 messages as history
-        currentState: useOrderStore.getState(), // Pass current order state
+        currentState: orderData, // Pass only data, not functions
       });
 
       const { reply, currentOrder } = response.data;
