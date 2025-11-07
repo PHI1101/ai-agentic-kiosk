@@ -41,7 +41,7 @@ const MainPage = () => {
     try {
       const { setOrder, clearCart, ...orderData } = useOrderStore.getState();
 
-      const response = await axios.post('/api/orders/chat/', {
+      const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/chat/', {
         message: command,
         history: messages.slice(-10), // Send last 10 messages as history
         currentState: orderData, // Pass only data, not functions

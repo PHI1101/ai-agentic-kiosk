@@ -1,7 +1,7 @@
-from django.urls import path, re_path
+from django.urls import path
 from .views import ProcessCommandView, ChatWithAIView
 
 urlpatterns = [
-    re_path(r'^process-command/?$', ProcessCommandView.as_view(), name='process-command'),
-    re_path(r'^chat/?$', ChatWithAIView.as_view(), name='chat-with-ai'),
+    path('process-command/', ProcessCommandView.as_view(), name='process-command'),
+    path('chat/', ChatWithAIView.as_view(), name='chat-with-ai'),
 ]
