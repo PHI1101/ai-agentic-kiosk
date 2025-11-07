@@ -1,39 +1,48 @@
 import { create } from 'zustand';
 
-// 메시지 타입을 정의합니다.
 export interface Message {
   id: number;
   text: string;
   sender: 'user' | 'ai';
 }
 
-// 스토어의 상태 타입을 정의합니다.
-interface ChatState {
-  messages: Message[];
-  addMessage: (message: Omit<Message, 'id'>) => void;
+export interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
 }
 
-// Zustand 스토어를 생성합니다.
+export interface OrderState {
+  orderId: number | null;
+  storeName: string;
+  items: OrderItem[];
+  totalPrice: number;
+  status: 'idle' | 'pending' | 'confirmed';
+}
+
+interface ChatState {
+  messages: Message[];
+  currentOrder: OrderState;
+  addMessage: (message: Omit<Message, 'id'>) => void;
+  setCurrentOrder: (order: OrderState) => void;
+}
+
 const useChatStore = create<ChatState>((set) => ({
   messages: [],
+  currentOrder: {
+    orderId: null,
+    storeName: '',
+    items: [],
+    totalPrice: 0,
+    status: 'idle',
+  },
   addMessage: (message) => {
-    // Add the incoming message to the state
     set((state) => ({
       messages: [...state.messages, { ...message, id: state.messages.length }],
     }));
-
-    // If the message is from the user, simulate an AI response for testing TTS
-    // if (message.sender === 'user') {
-    //   setTimeout(() => {
-    //     const aiResponse = `"${message.text}" 라고 말씀하셨네요.`;
-    //     set((state) => ({
-    //       messages: [
-    //         ...state.messages,
-    //         { id: state.messages.length, text: aiResponse, sender: 'ai' },
-    //       ],
-    //     }));
-    //   }, 1000); // 1-second delay
-    // }
+  },
+  setCurrentOrder: (order) => {
+    set({ currentOrder: order });
   },
 }));
 

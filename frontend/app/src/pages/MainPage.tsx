@@ -1,7 +1,7 @@
 import React from 'react';
 import { Grid, Paper, Typography, List, ListItem, ListItemText, Divider, Box } from '@mui/material';
 import ChatInterface from '../components/ChatInterface';
-import { useChatStore } from '../store/chatStore';
+import useChatStore from '../store/chatStore';
 
 const MainPage: React.FC = () => {
   const { currentOrder } = useChatStore();
