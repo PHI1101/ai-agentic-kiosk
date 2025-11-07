@@ -8,12 +8,79 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import json
+import re
 
 # For simplicity, we'll use a mock NLU
-def simple_nlu(text):
-    if '김밥' in text and '주문' in text:
-        return {'intent': 'order_food', 'item': '김밥'}
-    return {'intent': 'unknown'}
+def simple_nlu(text, history=None):
+    intent = {'intent': 'unknown', 'item': None, 'quantity': 1}
+
+    # Keywords for direct order intent
+    order_keywords = ['주문할게요', '주문할래', '주문해주세요', '주문이요', '주문']
+    
+    # Check for direct order intent in current message
+    for keyword in order_keywords:
+        if keyword in text:
+            # Try to extract item name before the keyword
+            parts = text.split(keyword)
+            if parts[0].strip():
+                item_candidate = parts[0].strip()
+                # Check if the item candidate is a known menu item
+                if MenuItem.objects.filter(name__icontains=item_candidate).exists():
+                    intent['item'] = item_candidate
+                    intent['intent'] = 'order_food'
+                    return intent
+            # If no item before keyword, try to get from previous AI message if it was a confirmation
+            if history:
+                last_assistant_message = None
+                for msg in reversed(history):
+                    if msg.get('sender') == 'assistant':
+                        last_assistant_message = msg.get('text')
+                        break
+                if last_assistant_message and '주문하실 건가요?' in last_assistant_message:
+                    match = re.search(r"(\S+)의 (\S+)는 (\d+)원이에요\\. 주문하실 건가요\\?", last_assistant_message)
+                    if match:
+                        intent['item'] = match.group(2)
+                        intent['intent'] = 'order_food'
+                        return intent
+            # If still no item, but order keyword is present, try to get from previous user message
+            if not intent['item'] and history:
+                for msg in reversed(history):
+                    if msg.get('sender') == 'user' and any(k in msg.get('text') for k in ['주문할게요', '주문할래', '주문해주세요', '주문이요', '주문']):
+                        # Try to extract item from that previous user message
+                        item_candidate_from_prev = msg.get('text').replace('주문할게요', '').replace('주문할래', '').replace('주문해주세요', '').replace('주문이요', '').replace('주문', '').strip()
+                        if MenuItem.objects.filter(name__icontains=item_candidate_from_prev).exists():
+                            intent['item'] = item_candidate_from_prev
+                            intent['intent'] = 'order_food'
+                            return intent
+            return intent # Return intent even if item is None, to indicate order attempt
+
+    # Check for confirmation after AI asked for order
+    confirmation_keywords = ['네', '응', '예', '네 맞아요', '네 그렇게 해주세요']
+    if any(keyword in text for keyword in confirmation_keywords) and history:
+        last_assistant_message = None
+        for msg in reversed(history):
+            if msg.get('sender') == 'assistant':
+                last_assistant_message = msg.get('text')
+                break
+        
+        if last_assistant_message and '주문하실 건가요?' in last_assistant_message:
+            # Extract item name from the last assistant message
+            # Example: "맘스터치의 싸이버거는 4600원이에요. 주문하실 건가요?"
+            match = re.search(r"(\S+)의 (\S+)는 (\d+)원이에요\\. 주문하실 건가요\\?", last_assistant_message)
+            if match:
+                intent['item'] = match.group(2)
+                intent['intent'] = 'order_food'
+                return intent
+            
+    # If user just says a menu item name, assume order intent if it's a known menu item
+    if not intent['item']:
+        menu_item = MenuItem.objects.filter(name__icontains=text).first()
+        if menu_item:
+            intent['item'] = menu_item.name
+            intent['intent'] = 'order_food'
+            return intent
+
+    return intent
 
 class ProcessCommandView(APIView):
     def post(self, request, *args, **kwargs):
@@ -93,6 +160,33 @@ class ChatWithAIView(APIView):
 
             openai.api_key = settings.OPENAI_API_KEY
 
+            # --- Order Intent Detection and Processing ---
+            nlu_result = simple_nlu(user_message, history)
+
+            if nlu_result['intent'] == 'order_food' and nlu_result['item']:
+                item_name = nlu_result['item']
+                try:
+                    menu_item = MenuItem.objects.filter(name__icontains=item_name).first()
+                    if menu_item:
+                        # Create a new order (simplified, assuming no current_order_state from frontend for now)
+                        # In a real app, current_order_state would be passed and managed
+                        store = menu_item.store
+                        order = Order.objects.create(store=store)
+                        OrderItem.objects.create(order=order, menu_item=menu_item, quantity=nlu_result['quantity'])
+                        
+                        reply = f"'{store.name}'에서 '{menu_item.name}' {nlu_result['quantity']}개를 주문했습니다. 총 {int(menu_item.price * nlu_result['quantity'])}원입니다. 잠시 후 픽업 안내를 해드릴게요."
+                        return JsonResponse({'reply': reply})
+                    else:
+                        reply = f"죄송하지만, '{item_name}' 메뉴를 찾을 수 없습니다."
+                        return JsonResponse({'reply': reply})
+
+                except Exception as e:
+                    reply = f"주문 처리 중 오류가 발생했습니다: {e}"
+                    return JsonResponse({'reply': reply})
+            # --- End Order Intent Detection and Processing ---
+
+
+            # --- General Chat Logic (if no order intent detected) ---
             # 시스템 프롬프트 설정
             system_prompt = (
                 "너는 노인과 장애인도 쉽게 사용할 수 있는 AI 키오스크야. "
@@ -154,8 +248,6 @@ class ChatWithAIView(APIView):
                     for store_name, items in stores_data.items():
                         if items: # Only add if store has matching items
                             result_texts.append(f"'{store_name}'에는 {', '.join(items)}가(이) 있습니다.")
-                        # else: # If search_query was specific and store has no matching items, don't add empty store
-                        #     result_texts.append(f"'{store_name}'에는 현재 '{search_query}' 관련 메뉴가 없습니다.")
                     db_search_result = " ".join(result_texts)
                 else:
                     db_search_result = "현재 데이터베이스에 요청하신 정보와 일치하는 가게나 메뉴가 없습니다."
