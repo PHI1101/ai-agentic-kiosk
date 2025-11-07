@@ -3,12 +3,12 @@ import { Box, Paper, Typography, List, ListItem, ListItemText, Divider, Button }
 import { useOrderStore } from '../store/orderStore';
 
 const OrderSummary = () => {
-  const { items, totalPrice, clearCart } = useOrderStore();
+  const { items, totalPrice, storeName, clearCart } = useOrderStore();
 
   return (
     <Paper elevation={3} sx={{ p: 2, mt: 2 }}>
       <Typography variant="h6" gutterBottom>
-        주문 현황
+        주문 현황 {storeName && `- ${storeName}`}
       </Typography>
       <Divider sx={{ mb: 1 }} />
       {items.length === 0 ? (
@@ -18,7 +18,7 @@ const OrderSummary = () => {
       ) : (
         <List dense>
           {items.map((item) => (
-            <ListItem key={item.name} secondaryAction={<Typography>{item.price.toLocaleString()}원</Typography>}>
+            <ListItem key={item.name} secondaryAction={<Typography>{(item.price * item.quantity).toLocaleString()}원</Typography>}>
               <ListItemText primary={`${item.name} x ${item.quantity}`} />
             </ListItem>
           ))}

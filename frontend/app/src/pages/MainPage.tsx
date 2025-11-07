@@ -5,21 +5,17 @@ import ChatInterface from '../components/ChatInterface';
 import OrderSummary from '../components/OrderSummary';
 import AiAgentAvatar, { AgentStatus } from '../components/AiAgentAvatar';
 import useVoiceRecognition from '../hooks/useVoiceRecognition';
+import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { useChatStore } from '../store/chatStore';
 import { useOrderStore } from '../store/orderStore';
 import axios from 'axios';
 
-interface PendingOrderItem {
-  name: string;
-  price: number;
-}
-
 const MainPage = () => {
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
-  const { addMessage } = useChatStore();
-  const { addItem } = useOrderStore();
+  const { speak } = useTextToSpeech();
+  const { messages, addMessage } = useChatStore();
+  const { setOrder } = useOrderStore(); // Use the new setOrder function
   
-  const [pendingItem, setPendingItem] = useState<PendingOrderItem | null>(null);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
 
@@ -28,6 +24,7 @@ const MainPage = () => {
     startListening();
     return () => {
       stopListening();
+      window.speechSynthesis.cancel();
     };
   }, [startListening, stopListening]);
 
@@ -35,38 +32,37 @@ const MainPage = () => {
     setAgentStatus(listening ? 'listening' : 'idle');
   }, [listening]);
 
-  // 사용자 메시지 처리 로직을 공통 함수로 분리
-  const processUserCommand = useCallback((command: string) => {
+  // 사용자 메시지 처리 로직 (백엔드 API v2에 맞게 수정)
+  const processUserCommand = useCallback(async (command: string) => {
     if (!command) return;
 
     setAgentStatus('thinking');
 
-    if (pendingItem && (command.includes('네') || command.includes('예'))) {
-      addItem(pendingItem);
-      addMessage({ sender: 'bot', text: `${pendingItem.name}을(를) 장바구니에 추가했습니다. 더 필요하신 것이 있으신가요?` });
-      setPendingItem(null);
+    try {
+      const response = await axios.post('/api/orders/chat/', {
+        message: command,
+        history: messages.slice(-10), // Send last 10 messages as history
+        currentState: useOrderStore.getState(), // Pass current order state
+      });
+
+      const { reply, currentOrder } = response.data;
+
+      addMessage({ sender: 'bot', text: reply });
+      speak(reply);
       setAgentStatus('speaking');
-    } else if (pendingItem && (command.includes('아니요') || command.includes('아니오'))) {
-      addMessage({ sender: 'bot', text: '알겠습니다. 다른 것을 주문하시겠어요?' });
-      setPendingItem(null);
-      setAgentStatus('speaking');
-    } else {
-      axios.post('/api/orders/process_command/', { command })
-        .then(response => {
-          const { action, item, price, response: botResponse } = response.data;
-          addMessage({ sender: 'bot', text: botResponse });
-          setAgentStatus('speaking');
-          if (action === 'confirm_order' && item && price) {
-            setPendingItem({ name: item, price: price });
-          }
-        })
-        .catch(error => {
-          console.error("Error sending command to backend:", error);
-          addMessage({ sender: 'bot', text: "죄송합니다, 오류가 발생했습니다." });
-          setAgentStatus('idle');
-        });
+
+      if (currentOrder) {
+        setOrder(currentOrder); // Update order state from backend response
+      }
+
+    } catch (error) {
+      console.error("Error sending command to backend:", error);
+      const errorText = "죄송합니다, 서버와 통신 중 오류가 발생했습니다.";
+      addMessage({ sender: 'bot', text: errorText });
+      speak(errorText);
+      setAgentStatus('idle');
     }
-  }, [addMessage, addItem, pendingItem]);
+  }, [messages, addMessage, setOrder, speak]);
 
   // 음성 인식 결과 처리
   useEffect(() => {
