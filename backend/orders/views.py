@@ -139,7 +139,7 @@ class ProcessCommandView(APIView):
                         'totalPrice': float(total_price),
                         'status': 'pending'
                     }
-                print(f"ProcessCommandView updated_order_state: {updated_order_state}")
+                    print(f"ProcessCommandView updated_order_state: {updated_order_state}")
                 else:
                     reply = f"죄송하지만, '{item_name}' 메뉴를 찾을 수 없습니다."
 
