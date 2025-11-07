@@ -93,10 +93,40 @@ class ChatWithAIView(APIView):
 
             openai.api_key = settings.OPENAI_API_KEY
 
+            # 시스템 프롬프트 설정
+            system_prompt = "너는 노인과 장애인도 쉽게 사용할 수 있는 AI 키오스크야. 주문이 완료될 때까지 대화를 이어가며 친절하게 돕고, 중간에 끊기지 않도록 이전 대화를 기억해. 사용자가 메뉴를 물어보면, 아래 'DB 검색 결과'를 바탕으로 구체적인 가게와 메뉴, 가격을 안내해야 해."
+            
+            # DB 검색 로직
+            db_search_result = ""
+            search_keywords = ['메뉴', '뭐 팔아', '있어', '추천', '버거', '커피', '김밥'] # 확장 가능한 키워드
+            
+            # 사용자가 음식이나 메뉴 관련 질문을 하는지 간단히 확인
+            if any(keyword in user_message for keyword in search_keywords):
+                # 간단한 키워드 기반 검색 실행 (예: '버거', '커피')
+                query = user_message.split(' ')[0] # "햄버거 보여줘" -> "햄버거"
+                if '버거' in query or '햄버거' in query:
+                    query = '버거'
+                
+                menu_items = MenuItem.objects.filter(name__icontains=query)
+                
+                if menu_items.exists():
+                    stores = {}
+                    for item in menu_items:
+                        if item.store.name not in stores:
+                            stores[item.store.name] = []
+                        stores[item.store.name].append(f"{item.name}({int(item.price)}원)")
+                    
+                    result_texts = []
+                    for store_name, items in stores.items():
+                        result_texts.append(f"'{store_name}'에는 {', '.join(items)}가(이) 있어.")
+                    db_search_result = " ".join(result_texts)
+
             # 대화 기록을 OpenAI 형식으로 변환
-            conversation_history = [
-                {"role": "system", "content": "너는 노인과 장애인도 쉽게 사용할 수 있는 AI 키오스크야. 주문이 완료될 때까지 대화를 이어가며 친절하게 돕고, 중간에 끊기지 않도록 이전 대화를 기억해."}
-            ]
+            conversation_history = [{"role": "system", "content": system_prompt}]
+
+            # DB 검색 결과가 있으면 시스템 메시지에 추가
+            if db_search_result:
+                conversation_history.append({"role": "system", "content": f"DB 검색 결과: {db_search_result}"})
 
             for message in history:
                 role = "user" if message.get("sender") == "user" else "assistant"
