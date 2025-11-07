@@ -149,15 +149,16 @@ class ProcessCommandView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ChatWithAIView(APIView):
+    authentication_classes = [] # 인증 클래스 비활성화
+    permission_classes = []   # 권한 클래스 비활성화
     def post(self, request, *args, **kwargs):
         try:
-            data = json.loads(request.body)
-            history = data.get('history', [])
-            user_message = data.get('message')
-            current_order_state = data.get('currentState')
+            history = request.data.get('history', [])
+            user_message = request.data.get('message')
+            current_order_state = request.data.get('currentState')
 
             if not user_message:
-                return JsonResponse({'error': 'Message not provided'}, status=400)
+                return Response({'error': 'Message not provided'}, status=status.HTTP_400_BAD_REQUEST)
 
             openai.api_key = settings.OPENAI_API_KEY
 
@@ -325,10 +326,10 @@ class ChatWithAIView(APIView):
             
             return Response({'reply': ai_response, 'currentOrder': updated_order_state})
 
-        except json.JSONDecodeError:
-            return Response({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
