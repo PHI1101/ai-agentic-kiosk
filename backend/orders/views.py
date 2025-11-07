@@ -265,34 +265,46 @@ class ChatWithAIView(APIView):
                 stores_data = {}
                 available_categories = set()
                 
-                items_to_process = []
-                if search_query and search_query != "all":
-                    items_to_process = MenuItem.objects.filter(name__icontains=search_query)
-                else: # "all" or no specific query
-                    items_to_process = MenuItem.objects.all()
+                all_items = MenuItem.objects.all().select_related('store')
 
-                for item in items_to_process:
+                for item in all_items:
                     category = get_category_from_item(item.name)
                     if category:
                         available_categories.add(category)
-                    
-                    if search_query == "all" or (search_query and search_query in item.name.lower()) or (search_query and category and search_query in category):
-                        if item.store.name not in stores_data:
-                            stores_data[item.store.name] = []
-                        stores_data[item.store.name].append(f"{item.name}({int(item.price)}원)")
+
+                items_to_display = []
+                if search_query and search_query != "all":
+                    for item in all_items:
+                        item_category = get_category_from_item(item.name)
+                        if (
+                            (search_query in item.name.lower()) or
+                            (item_category and search_query in item_category) or
+                            (search_query in item.store.name.lower())
+                        ):
+                            items_to_display.append(item)
+                else:
+                    items_to_display = all_items
+
+                for item in items_to_display:
+                    if item.store.name not in stores_data:
+                        stores_data[item.store.name] = []
+                    stores_data[item.store.name].append(f"{item.name}({int(item.price)}원)")
 
                 if stores_data:
                     result_texts = []
                     if search_query == "all" and available_categories:
-                         result_texts.append(f"현재 주문 가능한 주요 음식 종류는 {', '.join(sorted(list(available_categories)))} 등입니다.")
+                        result_texts.append(f"현재 주문 가능한 주요 음식 종류는 {', '.join(sorted(list(available_categories)))} 등입니다.")
 
-                    for store_name, items in stores_data.items():
+                    for store_name, items in sorted(stores_data.items()):
                         if items:
                             result_texts.append(f"'{store_name}'에는 {', '.join(items)}가(이) 있습니다.")
                     
                     db_search_result = " ".join(result_texts)
                 else:
-                    db_search_result = "현재 데이터베이스에 요청하신 정보와 일치하는 가게나 메뉴가 없습니다."
+                    if search_query and search_query != "all":
+                        db_search_result = f"죄송하지만, 요청하신 '{search_query}' 관련 메뉴를 찾을 수 없습니다. 현재 주문 가능한 종류는 {', '.join(sorted(list(available_categories)))}입니다."
+                    else:
+                        db_search_result = "현재 데이터베이스에 메뉴 정보가 없습니다."
 
             conversation_history = [{"role": "system", "content": system_prompt}]
             if db_search_result:
