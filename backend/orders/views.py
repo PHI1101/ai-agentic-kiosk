@@ -193,7 +193,9 @@ class ChatWithAIView(APIView):
                 "주문이 완료될 때까지 대화를 이어가며 친절하게 돕고, 중간에 끊기지 않도록 이전 대화를 기억해. "
                 "사용자가 메뉴, 가게, 추천 등을 물어보면, 아래 'DB 검색 결과'를 **반드시 참고하여** 구체적인 가게와 메뉴, 가격을 안내해야 해. "
                 "**DB 검색 결과에 없는 내용은 절대 지어내지 마.** "
-                "만약 DB 검색 결과가 비어있다면, '죄송하지만 현재 요청하신 정보와 일치하는 가게나 메뉴를 찾을 수 없습니다.'라고 답변해줘."
+                "특히, 사용자가 추천을 요청하거나 음식 종류를 물어볼 때, 'DB 검색 결과'에 명시된 **실제로 주문 가능한 음식 종류나 메뉴만 언급하고 추천해야 해.** "
+                "만약 사용자가 'DB 검색 결과'에 없는 음식 종류를 요청하면, 즉시 '죄송하지만 현재는 해당 메뉴를 제공하지 않습니다. 대신 [DB 검색 결과에 있는 사용 가능한 음식 종류나 메뉴] 중에서 선택해 주세요.'와 같이 답변해줘."\
+                "만약 DB 검색 결과가 비어있다면, '죄송하지만 현재 요청하신 정보와 일치하는 가게나 메뉴를 찾을 수 없습니다.'라고 답변해줘."\
             )
             
             # DB 검색 로직
@@ -228,26 +230,61 @@ class ChatWithAIView(APIView):
 
             if should_search_db:
                 stores_data = {}
+                available_categories = set() # To store unique food categories
+                
                 if search_query == "all":
-                    # Fetch all stores and their menu items
                     all_stores = Store.objects.all()
                     for store in all_stores:
                         stores_data[store.name] = []
                         for item in store.menu_items.all():
                             stores_data[store.name].append(f"{item.name}({int(item.price)}원)")
+                            # Simple category extraction (can be improved with a dedicated category field)
+                            if '버거' in item.name: available_categories.add('버거')
+                            if '커피' in item.name: available_categories.add('커피')
+                            if '김밥' in item.name: available_categories.add('김밥')
+                            if '마라탕' in item.name: available_categories.add('마라탕')
+                            if '분식' in item.name: available_categories.add('분식')
+                            if '한식' in item.name: available_categories.add('한식') # Assuming some items are '한식'
+                            if '양식' in item.name: available_categories.add('양식') # Assuming some items are '양식'
+                            if '스무디' in item.name: available_categories.add('음료')
+                            if '티' in item.name: available_categories.add('음료')
+                            if '라떼' in item.name: available_categories.add('음료')
+                            if '베이글' in item.name: available_categories.add('베이커리')
+                            if '크로와상' in item.name: available_categories.add('베이커리')
+                            if '샌드위치' in item.name: available_categories.add('샌드위치')
+                            if '과일' in item.name: available_categories.add('과일')
+
                 elif search_query:
-                    # Search for menu items containing the query
                     menu_items = MenuItem.objects.filter(name__icontains=search_query)
                     for item in menu_items:
                         if item.store.name not in stores_data:
                             stores_data[item.store.name] = []
                         stores_data[item.store.name].append(f"{item.name}({int(item.price)}원)")
+                        # Add category for specific search too
+                        if '버거' in item.name: available_categories.add('버거')
+                        if '커피' in item.name: available_categories.add('커피')
+                        if '김밥' in item.name: available_categories.add('김밥')
+                        if '마라탕' in item.name: available_categories.add('마라탕')
+                        if '분식' in item.name: available_categories.add('분식')
+                        if '한식' in item.name: available_categories.add('한식')
+                        if '양식' in item.name: available_categories.add('양식')
+                        if '스무디' in item.name: available_categories.add('음료')
+                        if '티' in item.name: available_categories.add('음료')
+                        if '라떼' in item.name: available_categories.add('음료')
+                        if '베이글' in item.name: available_categories.add('베이커리')
+                        if '크로와상' in item.actions.add('베이커리')
+                        if '샌드위치' in item.name: available_categories.add('샌드위치')
+                        if '과일' in item.name: available_categories.add('과일')
                 
                 if stores_data:
                     result_texts = []
                     for store_name, items in stores_data.items():
-                        if items: # Only add if store has matching items
+                        if items:
                             result_texts.append(f"'{store_name}'에는 {', '.join(items)}가(이) 있습니다.")
+                    
+                    if available_categories and search_query == "all":
+                        result_texts.insert(0, f"현재 주문 가능한 주요 음식 종류는 {', '.join(sorted(list(available_categories)))} 등입니다.")
+                    
                     db_search_result = " ".join(result_texts)
                 else:
                     db_search_result = "현재 데이터베이스에 요청하신 정보와 일치하는 가게나 메뉴가 없습니다."
