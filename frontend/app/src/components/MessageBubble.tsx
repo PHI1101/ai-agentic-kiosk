@@ -1,29 +1,35 @@
 import React from 'react';
-import { Paper, Typography } from '@mui/material';
+import { Box, Paper, Typography } from '@mui/material';
 
 interface MessageBubbleProps {
+  sender: 'user' | 'bot';
   text: string;
-  sender: 'user' | 'ai';
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ text, sender }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ sender, text }) => {
   const isUser = sender === 'user';
 
   return (
-    <Paper
-      elevation={3}
+    <Box
       sx={{
-        p: 2,
-        mb: 2,
-        maxWidth: '80%',
-        alignSelf: isUser ? 'flex-end' : 'flex-start',
-        bgcolor: isUser ? 'primary.main' : 'background.paper',
-        color: isUser ? 'primary.contrastText' : 'text.primary',
-        borderRadius: isUser ? '20px 20px 5px 20px' : '20px 20px 20px 5px',
+        display: 'flex',
+        justifyContent: isUser ? 'flex-end' : 'flex-start',
+        mb: 1,
       }}
     >
-      <Typography variant="body1">{text}</Typography>
-    </Paper>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 1.5,
+          backgroundColor: isUser ? 'primary.main' : 'grey.200',
+          color: isUser ? 'primary.contrastText' : 'text.primary',
+          borderRadius: isUser ? '20px 20px 5px 20px' : '20px 20px 20px 5px',
+          maxWidth: '80%',
+        }}
+      >
+        <Typography variant="body1">{text}</Typography>
+      </Paper>
+    </Box>
   );
 };
 
