@@ -1,57 +1,88 @@
-import React from 'react';
-import { Grid, Paper, Typography, List, ListItem, ListItemText, Divider, Box } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Container, Typography, Button, Box, Grid } from '@mui/material';
 import ChatInterface from '../components/ChatInterface';
-import useChatStore from '../store/chatStore';
+import OrderSummary from '../components/OrderSummary';
+import AiAgentAvatar, { AgentStatus } from '../components/AiAgentAvatar';
+import useVoiceRecognition from '../hooks/useVoiceRecognition';
+import { useChatStore } from '../store/chatStore';
+import { useOrderStore } from '../store/orderStore';
+import axios from 'axios';
 
-const MainPage: React.FC = () => {
-  const { currentOrder } = useChatStore();
+interface PendingOrderItem {
+  name: string;
+  price: number;
+}
+
+const MainPage = () => {
+  const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
+  const { addMessage } = useChatStore();
+  const { addItem } = useOrderStore();
+  
+  const [pendingItem, setPendingItem] = useState<PendingOrderItem | null>(null);
+  const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
+
+  useEffect(() => {
+    setAgentStatus(listening ? 'listening' : 'idle');
+  }, [listening]);
+
+  useEffect(() => {
+    if (transcript) {
+      addMessage({ sender: 'user', text: transcript });
+      setAgentStatus('thinking'); // 사용자가 말한 후 '생각 중' 상태로 변경
+
+      if (pendingItem && (transcript.includes('네') || transcript.includes('예'))) {
+        addItem(pendingItem);
+        addMessage({ sender: 'bot', text: `${pendingItem.name}을(를) 장바구니에 추가했습니다. 더 필요하신 것이 있으신가요?` });
+        setPendingItem(null);
+        setAgentStatus('speaking');
+      } else if (pendingItem && (transcript.includes('아니요') || transcript.includes('아니오'))) {
+        addMessage({ sender: 'bot', text: '알겠습니다. 다른 것을 주문하시겠어요?' });
+        setPendingItem(null);
+        setAgentStatus('speaking');
+      } else {
+        const handler = setTimeout(() => {
+          axios.post('/api/orders/process_command/', { command: transcript })
+            .then(response => {
+              const { action, item, price, response: botResponse } = response.data;
+              addMessage({ sender: 'bot', text: botResponse });
+              setAgentStatus('speaking');
+              if (action === 'confirm_order' && item && price) {
+                setPendingItem({ name: item, price: price });
+              }
+            })
+            .catch(error => {
+              console.error("Error sending command to backend:", error);
+              addMessage({ sender: 'bot', text: "죄송합니다, 오류가 발생했습니다." });
+              setAgentStatus('idle');
+            });
+        }, 500);
+
+        return () => clearTimeout(handler);
+      }
+      resetTranscript();
+    }
+  }, [transcript, addMessage, resetTranscript, addItem, pendingItem]);
 
   return (
-    <Grid container spacing={2} sx={{ height: '100vh', p: 2 }}>
-      {/* Chat Interface */}
-      <Grid item xs={12} md={8} sx={{ height: '100%' }}>
-        <ChatInterface />
+    <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={7}>
+          <AiAgentAvatar status={agentStatus} />
+          <ChatInterface />
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Button variant="contained" onClick={startListening} disabled={listening} sx={{ mr: 1 }}>
+              음성인식 시작
+            </Button>
+            <Button variant="contained" color="secondary" onClick={stopListening} disabled={!listening}>
+              음성인식 중지
+            </Button>
+          </Box>
+        </Grid>
+        <Grid item xs={12} md={5}>
+          <OrderSummary />
+        </Grid>
       </Grid>
-
-      {/* Order Status */}
-      <Grid item xs={12} md={4} sx={{ height: '100%' }}>
-        <Paper sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
-          <Typography variant="h5" gutterBottom>
-            주문 현황
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          {currentOrder && currentOrder.orderId ? (
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="h6">{currentOrder.storeName}</Typography>
-              <List sx={{ flexGrow: 1, overflow: 'auto' }}>
-                {currentOrder.items.map((item, index) => (
-                  <ListItem key={index} disablePadding>
-                    <ListItemText 
-                      primary={`${item.name} x ${item.quantity}`}
-                      secondary={`${(item.price * item.quantity).toLocaleString()}원`}
-                      primaryTypographyProps={{ fontWeight: 'bold' }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-              <Divider sx={{ my: 2 }} />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h6">총 금액:</Typography>
-                <Typography variant="h6" fontWeight="bold">
-                  {currentOrder.totalPrice.toLocaleString()}원
-                </Typography>
-              </Box>
-            </Box>
-          ) : (
-            <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Typography variant="subtitle1" color="text.secondary">
-                주문 내역이 없습니다.
-              </Typography>
-            </Box>
-          )}
-        </Paper>
-      </Grid>
-    </Grid>
+    </Container>
   );
 };
 

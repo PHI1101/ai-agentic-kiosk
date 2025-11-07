@@ -1,15 +1,22 @@
 import React from 'react';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import theme from './theme/theme';
+import HomePage from './pages/HomePage';
 import MainPage from './pages/MainPage';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<MainPage />} />
-        {/* 향후 다른 페이지 추가 가능 */}
-      </Routes>
-    </Router>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/order" element={<MainPage />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 

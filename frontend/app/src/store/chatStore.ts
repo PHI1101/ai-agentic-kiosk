@@ -1,49 +1,19 @@
 import { create } from 'zustand';
 
-export interface Message {
-  id: number;
+interface Message {
+  sender: 'user' | 'bot';
   text: string;
-  sender: 'user' | 'ai';
-}
-
-export interface OrderItem {
-  name: string;
-  quantity: number;
-  price: number;
-}
-
-export interface OrderState {
-  orderId: number | null;
-  storeName: string;
-  items: OrderItem[];
-  totalPrice: number;
-  status: 'idle' | 'pending' | 'confirmed';
 }
 
 interface ChatState {
   messages: Message[];
-  currentOrder: OrderState;
-  addMessage: (message: Omit<Message, 'id'>) => void;
-  setCurrentOrder: (order: OrderState) => void;
+  addMessage: (message: Message) => void;
 }
 
 const useChatStore = create<ChatState>((set) => ({
-  messages: [],
-  currentOrder: {
-    orderId: null,
-    storeName: '',
-    items: [],
-    totalPrice: 0,
-    status: 'idle',
-  },
-  addMessage: (message) => {
-    set((state) => ({
-      messages: [...state.messages, { ...message, id: state.messages.length }],
-    }));
-  },
-  setCurrentOrder: (order) => {
-    set({ currentOrder: order });
-  },
+  messages: [{ sender: 'bot', text: '안녕하세요! 음성으로 주문을 시작해보세요.' }],
+  addMessage: (message) =>
+    set((state) => ({ messages: [...state.messages, message] })),
 }));
 
 export default useChatStore;
