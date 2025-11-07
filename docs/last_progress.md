@@ -1,47 +1,27 @@
-# AI 키오스크 프로젝트 진행 현황: 데이터베이스 마이그레이션 및 배포 업데이트
+# AI Kiosk Project Progress Log
 
-## 1. 데이터베이스 마이그레이션 (SQLite -> PostgreSQL) 완료
+## 2025년 11월 7일 금요일
 
-### 1.1. 로컬 환경 설정
-- PostgreSQL 서버 설치 및 데이터베이스/사용자 생성 완료.
-- `myuser` 사용자에게 `mydjangodb` 데이터베이스 및 `public` 스키마에 대한 권한 부여 완료.
-- `openai` Python 패키지 설치 완료.
-- `db.json` 파일의 인코딩 문제 해결 (UTF-8 재인코딩) 완료.
+### 1. 백엔드 (Django) 수정 사항
 
-### 1.2. Django 애플리케이션 설정
-- `backend/config/settings.py` 파일 수정:
-    - `dj_database_url`을 사용하여 PostgreSQL 연결 설정.
-    - `DATABASE_URL` 환경 변수를 `.env` 파일에서 직접 읽어오도록 로직 강화.
-    - 로컬 개발 환경과 Railway 배포 환경 모두에서 유연하게 작동하도록 구성.
+*   **SyntaxError 해결 (`backend/orders/views.py`):**
+    *   `ProcessCommandView` 내 `print` 문의 잘못된 들여쓰기로 인해 발생한 `SyntaxError`를 수정했습니다.
+*   **챗봇 검색 로직 개선 (`backend/orders/views.py`):**
+    *   사용자가 메뉴, 카테고리, 가게 등을 검색할 때, `MenuItem`의 이름, `get_category_from_item` 함수로 추출된 카테고리, 그리고 가게 이름을 모두 고려하여 검색하도록 로직을 강화했습니다.
+    *   이를 통해 "커피"와 같이 포괄적인 요청에도 올바른 메뉴를 안내하고, "메가커피"와 같은 특정 가게 요청에도 적절히 응답할 수 있게 되었습니다.
+    *   검색 결과가 없을 경우, 현재 주문 가능한 음식 종류를 함께 안내하여 사용자가 다른 선택을 할 수 있도록 돕습니다.
+*   **주문 상태 직렬화 문제 해결 (`backend/orders/views.py`):**
+    *   `ChatWithAIView`에서 `django.http.JsonResponse` 대신 `rest_framework.response.Response`를 사용하여 `currentOrder` 객체가 프론트엔드로 올바르게 직렬화되어 전달되도록 수정했습니다.
 
-### 1.3. 데이터 이전
-- 로컬 SQLite 데이터베이스의 데이터를 `db.json` 파일로 백업 완료.
-- PostgreSQL 데이터베이스에 모든 Django 마이그레이션(`python manage.py migrate`) 성공적으로 적용 완료.
-- `db.json` 파일의 데이터를 PostgreSQL 데이터베이스로 성공적으로 로드(`python manage.py loaddata db.json`) 완료.
+### 2. 프론트엔드 (React/TypeScript) 수정 사항
 
-## 2. 배포 환경 업데이트 및 Git 관리
+*   **MUI 버전 다운그레이드 및 오류 수정 (`frontend/app/package.json`, `frontend/app/src/pages/MainPage.tsx`):**
+    *   `@mui/material` 및 관련 패키지들을 불안정한 v7 시험판에서 안정적인 v5 버전(`^5.15.15` 등)으로 다운그레이드했습니다.
+    *   이에 따라 `MainPage.tsx`에서 `Grid` 컴포넌트의 `item` prop 사용 오류를 해결하고, MUI v5의 표준 사용법에 맞게 코드를 복원했습니다.
+*   **중복 주문 현황 UI 제거 (`frontend/app/src/components/ChatInterface.tsx`):**
+    *   `ChatInterface.tsx` 내부에 중복으로 렌더링되던 "주문 현황" UI 패널을 제거했습니다. 이제 `MainPage.tsx`에서 렌더링되는 하나의 주문 현황 패널만 보이게 됩니다.
+*   **주문 현황 업데이트 문제 해결 (`frontend/app/src/components/ChatInterface.tsx`):**
+    *   `ChatInterface.tsx`가 전역 Zustand 스토어(`useChatStore`)의 `currentOrder` 상태와 올바르게 연동되도록 수정했습니다.
+    *   로컬 `useState` 대신 전역 상태를 사용하고, 백엔드에서 반환된 `currentOrder` 객체를 전역 상태에 정확히 반영하도록 로직을 수정했습니다. 이로써 주문 내역이 UI에 실시간으로 업데이트될 것입니다.
 
-### 2.1. Railway 배포 환경 고려사항
-- Railway 배포 시 `DATABASE_URL` 환경 변수가 Railway PostgreSQL 서비스의 실제 연결 정보를 사용하도록 안내.
-- `localhost` 기반의 `DATABASE_URL`은 배포 환경에서 사용할 수 없음을 명확히 함.
-
-### 2.2. Git 변경사항
-- `backend/config/settings.py` 파일 변경사항 커밋.
-- `railway.json` 파일 삭제 커밋.
-- `db.json` 및 `db.sqlite3` 파일을 `.gitignore`에 추가하여 Git 추적에서 제외.
-- 모든 변경사항을 Git 원격 저장소에 푸시 완료.
-
-## 3. 현재 상태 및 다음 단계
-
-### 3.1. 현재 상태
-- **로컬 개발 환경:** PostgreSQL 데이터베이스를 사용하여 Django 애플리케이션을 실행할 준비가 완료되었습니다.
-- **Railway 배포 환경:** 백엔드 코드는 최신 상태로 푸시되었으며, PostgreSQL 데이터베이스 연결을 위한 설정이 완료되었습니다.
-
-### 3.2. 다음 단계 (Railway 배포 확인)
-- **Railway `DATABASE_URL` 확인:** Railway 프로젝트 대시보드에서 Django 백엔드 서비스의 "Variables" 탭에 `DATABASE_URL` 환경 변수가 Railway PostgreSQL 서비스의 올바른 연결 문자열로 설정되어 있는지 **반드시 확인**해야 합니다. (이전에 `localhost`로 설정되어 있었다면 수정 필요)
-- **Railway `loaddata` 실행:** Railway에 배포된 Django 서비스에서 `db.json` 파일의 데이터를 PostgreSQL 데이터베이스로 로드해야 합니다.
-    - Railway 대시보드에서 Django 서비스의 "Deployments" 탭 또는 "CLI" 탭을 통해 다음 명령어를 실행합니다:
-      ```bash
-      python manage.py loaddata db.json
-      ```
-- **배포된 애플리케이션 테스트:** `loaddata`까지 완료되면, Vercel에 배포된 프론트엔드를 통해 Railway 백엔드에 접속하여 AI 키오스크가 실제 데이터베이스의 가게 및 메뉴 정보를 사용하여 올바르게 응답하는지 확인합니다.
+---
