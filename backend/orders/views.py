@@ -139,6 +139,7 @@ class ProcessCommandView(APIView):
                         'totalPrice': float(total_price),
                         'status': 'pending'
                     }
+                print(f"ProcessCommandView updated_order_state: {updated_order_state}")
                 else:
                     reply = f"죄송하지만, '{item_name}' 메뉴를 찾을 수 없습니다."
 
@@ -213,6 +214,7 @@ class ChatWithAIView(APIView):
                             'totalPrice': float(total_price),
                             'status': 'pending'
                         }
+                        print(f"ChatWithAIView updated_order_state: {updated_order_state}")
                         
                         reply = f"'{menu_item.name}' {nlu_result['quantity']}개를 주문에 추가했습니다. 현재 주문 내역은 총 {int(total_price)}원입니다."
                         return JsonResponse({'reply': reply, 'currentOrder': updated_order_state})

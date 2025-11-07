@@ -5,6 +5,7 @@ import useChatStore from '../store/chatStore';
 
 const MainPage: React.FC = () => {
   const { currentOrder } = useChatStore();
+  console.log('MainPage currentOrder:', currentOrder);
 
   return (
     <Grid container spacing={2} sx={{ height: '100vh', p: 2 }}>
