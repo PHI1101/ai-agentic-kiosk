@@ -9,12 +9,12 @@ const MainPage: React.FC = () => {
   return (
     <Grid container spacing={2} sx={{ height: '100vh', p: 2 }}>
       {/* Chat Interface */}
-      <Grid item xs={12} md={8} sx={{ height: '100%' }}>
+      <Grid xs={12} md={8} sx={{ height: '100%' }}>
         <ChatInterface />
       </Grid>
 
       {/* Order Status */}
-      <Grid item xs={12} md={4} sx={{ height: '100%' }}>
+      <Grid xs={12} md={4} sx={{ height: '100%' }}>
         <Paper sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
           <Typography variant="h5" gutterBottom>
             주문 현황
