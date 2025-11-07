@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, TextField, IconButton, Paper, Typography, List } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import SendIcon from '@mui/icons-material/Send';
-import useChatStore from '../store/chatStore';
+import { useChatStore } from '../store/chatStore';
 import useVoiceRecognition from '../hooks/useVoiceRecognition';
 import MessageBubble from './MessageBubble';
 import axios from 'axios';
