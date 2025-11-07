@@ -94,32 +94,72 @@ class ChatWithAIView(APIView):
             openai.api_key = settings.OPENAI_API_KEY
 
             # 시스템 프롬프트 설정
-            system_prompt = "너는 노인과 장애인도 쉽게 사용할 수 있는 AI 키오스크야. 주문이 완료될 때까지 대화를 이어가며 친절하게 돕고, 중간에 끊기지 않도록 이전 대화를 기억해. 사용자가 메뉴를 물어보면, 아래 'DB 검색 결과'를 바탕으로 구체적인 가게와 메뉴, 가격을 안내해야 해."
+            system_prompt = (
+                "너는 노인과 장애인도 쉽게 사용할 수 있는 AI 키오스크야. "
+                "주문이 완료될 때까지 대화를 이어가며 친절하게 돕고, 중간에 끊기지 않도록 이전 대화를 기억해. "
+                "사용자가 메뉴, 가게, 추천 등을 물어보면, 아래 'DB 검색 결과'를 **반드시 참고하여** 구체적인 가게와 메뉴, 가격을 안내해야 해. "
+                "**DB 검색 결과에 없는 내용은 절대 지어내지 마.** "
+                "만약 DB 검색 결과가 비어있다면, '죄송하지만 현재 요청하신 정보와 일치하는 가게나 메뉴를 찾을 수 없습니다.'라고 답변해줘."
+            )
             
             # DB 검색 로직
             db_search_result = ""
-            search_keywords = ['메뉴', '뭐 팔아', '있어', '추천', '버거', '커피', '김밥'] # 확장 가능한 키워드
             
-            # 사용자가 음식이나 메뉴 관련 질문을 하는지 간단히 확인
-            if any(keyword in user_message for keyword in search_keywords):
-                # 간단한 키워드 기반 검색 실행 (예: '버거', '커피')
-                query = user_message.split(' ')[0] # "햄버거 보여줘" -> "햄버거"
-                if '버거' in query or '햄버거' in query:
-                    query = '버거'
-                
-                menu_items = MenuItem.objects.filter(name__icontains=query)
-                
-                if menu_items.exists():
-                    stores = {}
+            # Keywords that trigger a DB search for menu/store information
+            menu_related_keywords = ['메뉴', '뭐 팔아', '있어', '추천', '음식점', '가게', '근처', '어떤', '종류', '보여줘']
+            food_keywords = ['버거', '햄버거', '커피', '김밥', '마라탕', '분식', '한식', '양식', '카페', '스무디', '베이글', '크로와상', '샌드위치', '과일'] # Specific food types
+
+            should_search_db = False
+            search_query = ""
+
+            # Check if user message contains any menu-related keywords
+            if any(keyword in user_message for keyword in menu_related_keywords):
+                should_search_db = True
+                # Try to extract a specific food type if mentioned
+                for food_type in food_keywords:
+                    if food_type in user_message:
+                        search_query = food_type
+                        break
+                # If no specific food type, but general menu/recommendation, search broadly
+                if not search_query and any(k in user_message for k in ['추천', '근처', '어떤', '종류', '뭐 팔아', '메뉴']):
+                    search_query = "all" # Special query to fetch all stores/menus
+
+            # If a specific food type is mentioned directly without general menu keywords
+            elif any(food_type in user_message for food_type in food_keywords):
+                should_search_db = True
+                for food_type in food_keywords:
+                    if food_type in user_message:
+                        search_query = food_type
+                        break
+
+            if should_search_db:
+                stores_data = {}
+                if search_query == "all":
+                    # Fetch all stores and their menu items
+                    all_stores = Store.objects.all()
+                    for store in all_stores:
+                        stores_data[store.name] = []
+                        for item in store.menu_items.all():
+                            stores_data[store.name].append(f"{item.name}({int(item.price)}원)")
+                elif search_query:
+                    # Search for menu items containing the query
+                    menu_items = MenuItem.objects.filter(name__icontains=search_query)
                     for item in menu_items:
-                        if item.store.name not in stores:
-                            stores[item.store.name] = []
-                        stores[item.store.name].append(f"{item.name}({int(item.price)}원)")
-                    
+                        if item.store.name not in stores_data:
+                            stores_data[item.store.name] = []
+                        stores_data[item.store.name].append(f"{item.name}({int(item.price)}원)")
+                
+                if stores_data:
                     result_texts = []
-                    for store_name, items in stores.items():
-                        result_texts.append(f"'{store_name}'에는 {', '.join(items)}가(이) 있어.")
+                    for store_name, items in stores_data.items():
+                        if items: # Only add if store has matching items
+                            result_texts.append(f"'{store_name}'에는 {', '.join(items)}가(이) 있습니다.")
+                        # else: # If search_query was specific and store has no matching items, don't add empty store
+                        #     result_texts.append(f"'{store_name}'에는 현재 '{search_query}' 관련 메뉴가 없습니다.")
                     db_search_result = " ".join(result_texts)
+                else:
+                    db_search_result = "현재 데이터베이스에 요청하신 정보와 일치하는 가게나 메뉴가 없습니다."
+
 
             # 대화 기록을 OpenAI 형식으로 변환
             conversation_history = [{"role": "system", "content": system_prompt}]
