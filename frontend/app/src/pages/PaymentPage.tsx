@@ -20,7 +20,7 @@ const PaymentPage = () => {
   // 페이지 로드 시 첫 안내 메시지 음성 출력
   useEffect(() => {
     speak(agentMessage);
-  }, []);
+  }, [agentMessage, speak]);
 
   // AI 에이전트와 통신하는 함수
   const sendPaymentCommand = useCallback(async (command: string) => {
