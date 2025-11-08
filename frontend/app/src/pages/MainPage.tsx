@@ -67,13 +67,13 @@ const MainPage = () => {
     }
   }, [messages, addMessage, resetTranscript, conversationState, setConversationState, setOrder]);
 
-  // Process voice recognition results
+  // Process voice recognition results when listening stops
   useEffect(() => {
-    if (transcript) {
+    if (!listening && transcript) { // Only process if not listening and transcript exists
       addMessage({ sender: 'user', text: transcript });
       processUserCommand(transcript);
     }
-  }, [transcript, addMessage, processUserCommand]);
+  }, [listening, transcript, addMessage, processUserCommand]);
 
   // Process text input
   const handleTextInputSend = () => {

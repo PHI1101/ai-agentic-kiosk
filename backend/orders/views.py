@@ -192,27 +192,50 @@ class ChatWithAIView(APIView):
             )
             
             db_search_result = ""
-            all_items = MenuItem.objects.all().select_related('store')
-            available_categories = sorted(list(set(c for c in [get_category_from_item(item.name) for item in all_items] if c)))
+            
+            # Start with a base QuerySet
+            base_items_queryset = MenuItem.objects.all().select_related('store')
 
+            # Build Q objects for filtering
             q_objects = Q()
-            if 'category' in entities: q_objects |= Q(name__icontains=entities['category'])
-            if 'store_name' in entities: q_objects |= Q(store__name__icontains=entities['store_name'])
-            if not q_objects: q_objects |= Q(name__icontains=user_message) | Q(store__name__icontains=user_message)
+            if 'category' in entities: 
+                # Filter by category in item name
+                q_objects |= Q(name__icontains=entities['category'])
+            if 'store_name' in entities: 
+                # Filter by store name
+                q_objects |= Q(store__name__icontains=entities['store_name'])
+            
+            # If no specific entities, try to match user message
+            if not q_objects: 
+                q_objects |= Q(name__icontains=user_message) | Q(store__name__icontains=user_message)
 
-            items_to_display = all_items.filter(q_objects).distinct()
+            # Apply filter to the QuerySet at the database level
+            items_to_display = base_items_queryset.filter(q_objects).distinct()
+
+            # Now, get available categories from the filtered items or all items if no filter was applied
+            # It's better to get available categories from all items to give the AI full context
+            all_available_categories = sorted(list(set(c for c in [get_category_from_item(item.name) for item in base_items_queryset] if c)))
+
+            # Format the search result string
             stores_data = {}
             if items_to_display:
                 for item in items_to_display:
-                    if item.store.name not in stores_data: stores_data[item.store.name] = []
+                    if item.store.name not in stores_data:
+                        stores_data[item.store.name] = []
                     stores_data[item.store.name].append(f"{item.name}({int(item.price)}원)")
             
-            result_texts = [f"주문 가능한 주요 음식 종류: {', '.join(available_categories)}"]
+            result_texts = []
+            if all_available_categories: # Use all available categories for general context
+                result_texts.append(f"주문 가능한 주요 음식 종류: {', '.join(all_available_categories)}")
+
             if stores_data:
                 for store_name, items in sorted(stores_data.items()):
                     result_texts.append(f"'{store_name}' 메뉴: {', '.join(items)}")
             
-            db_search_result = " ".join(result_texts)
+            if result_texts:
+                db_search_result = " ".join(result_texts)
+            else:
+                db_search_result = f"검색 결과 없음. 주문 가능한 주요 음식 종류는 {', '.join(all_available_categories)}입니다."
 
             conversation_history = [{"role": "system", "content": system_prompt}]
             if db_search_result:
@@ -250,7 +273,8 @@ class ChatWithAIView(APIView):
                 except json.JSONDecodeError:
                     final_reply = ai_response_text
 
-            return Response({
+            return Response(
+                {
                 'reply': final_reply, 
                 'currentOrder': updated_order,
                 'conversationState': conversation_state
