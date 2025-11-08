@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'; // Added useRef
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Container, Box, Grid, TextField, IconButton } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import MicIcon from '@mui/icons-material/Mic';
@@ -12,20 +13,19 @@ import { useOrderStore } from '../store/orderStore';
 import axios from 'axios';
 
 const MainPage = () => {
+  const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage, conversationState, setConversationState } = useChatStore();
   const { setOrder } = useOrderStore();
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
-  const processedTranscriptRef = useRef<string | null>(null); // New ref
+  const processedTranscriptRef = useRef<string | null>(null);
 
-  // Update agent status based on listening state
   useEffect(() => {
     setAgentStatus(listening ? 'listening' : 'idle');
   }, [listening]);
 
-  // Main logic to process user commands
   const processUserCommand = useCallback(async (command: string) => {
     if (!command) return;
 
@@ -41,7 +41,7 @@ const MainPage = () => {
         conversationState: conversationState,
       });
 
-      const { reply, currentOrder, conversationState: newConversationState } = response.data;
+      const { reply, currentOrder, conversationState: newConversationState, action } = response.data;
 
       addMessage({ sender: 'assistant', text: reply });
       setAgentStatus('speaking');
@@ -52,6 +52,11 @@ const MainPage = () => {
 
       if (newConversationState) {
         setConversationState(newConversationState);
+      }
+
+      // Navigate to payment page if backend requests it
+      if (action === 'navigate_to_payment') {
+        navigate('/payment');
       }
 
       resetTranscript();
@@ -66,23 +71,19 @@ const MainPage = () => {
       addMessage({ sender: 'assistant', text: errorText });
       resetTranscript();
     }
-  }, [messages, addMessage, resetTranscript, conversationState, setConversationState, setOrder]);
+  }, [messages, addMessage, resetTranscript, conversationState, setConversationState, setOrder, navigate]);
 
-  // Process voice recognition results when listening stops
   useEffect(() => {
-    // Only process if not listening, transcript exists, and it's a new transcript
     if (!listening && transcript && transcript !== processedTranscriptRef.current) {
       addMessage({ sender: 'user', text: transcript });
       processUserCommand(transcript);
-      processedTranscriptRef.current = transcript; // Mark as processed
+      processedTranscriptRef.current = transcript;
     }
-    // When listening stops and transcript is cleared, reset the ref
     if (!listening && !transcript && processedTranscriptRef.current) {
         processedTranscriptRef.current = null;
     }
   }, [listening, transcript, addMessage, processUserCommand]);
 
-  // Process text input
   const handleTextInputSend = () => {
     if (!inputValue) return;
     addMessage({ sender: 'user', text: inputValue });
@@ -90,7 +91,6 @@ const MainPage = () => {
     setInputValue('');
   };
 
-  // Toggle listening state
   const handleToggleListening = () => {
     if (listening) {
       stopListening();
@@ -99,7 +99,6 @@ const MainPage = () => {
     }
   };
 
-  // Handle order confirmation from OrderSummary
   const handleConfirmOrder = useCallback(() => {
     processUserCommand("결제할게요");
   }, [processUserCommand]);

@@ -17,9 +17,10 @@ class MenuItem(models.Model):
 
 class Order(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
+        ('pending', '주문중'),
+        ('awaiting_payment', '결제 대기'),
+        ('completed', '주문 완료'),
+        ('cancelled', '주문 취소'),
     ]
 
     store = models.ForeignKey(Store, on_delete=models.SET_NULL, null=True, blank=True)
