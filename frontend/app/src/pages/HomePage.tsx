@@ -7,7 +7,7 @@ import { useTextToSpeech } from '../hooks/useTextToSpeech';
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { transcript, startListening, stopListening } = useVoiceRecognition();
+  const { transcript, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { speak } = useTextToSpeech();
 
   // Updated welcome text to reflect the service name "보이스 오더"
