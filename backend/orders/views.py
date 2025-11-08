@@ -263,25 +263,40 @@ class ChatWithAIView(APIView):
 
             # Check for JSON action block
             json_match = re.search(r'```json\n({.*?})\n```', ai_response_text, re.DOTALL)
+            action_data = None # Initialize action_data
+
             if json_match:
                 action_json_str = json_match.group(1)
+            else:
+                # If no code block, try to parse the whole response as JSON
+                action_json_str = ai_response_text.strip()
+                # Check if it looks like JSON before trying to parse
+                if not (action_json_str.startswith('{') and action_json_str.endswith('}')):
+                    action_json_str = None # Not a direct JSON string
+
+            if action_json_str:
                 try:
                     action_data = json.loads(action_json_str)
                     final_reply = action_data.get('reply', "주문이 처리되었습니다.")
                     
                     if action_data.get('action') == 'add_to_cart':
                         item_name = action_data.get('item_name')
-                        store_name = action_data.get('store_name') # Extract store_name
-                        if item_name and store_name: # Both item_name and store_name are required
-                            updated_order, error_message = _update_order(item_name, store_name, current_order_state) # Pass store_name
+                        store_name = action_data.get('store_name')
+                        if item_name and store_name:
+                            updated_order, error_message = _update_order(item_name, store_name, current_order_state)
                             if not updated_order:
-                                final_reply = error_message # Use specific error message from _update_order
+                                final_reply = error_message
                                 updated_order = current_order_state
                         else:
-                            final_reply = "죄송합니다. 메뉴 이름과 가게 이름이 모두 필요합니다." # Error if missing
+                            final_reply = "죄송합니다. 메뉴 이름과 가게 이름이 모두 필요합니다."
                             updated_order = current_order_state
                 except json.JSONDecodeError:
-                    final_reply = ai_response_text
+                    # If JSON is malformed, or not JSON, then action_data remains None
+                    pass # Fallback to using ai_response_text as final_reply
+
+            # If no valid action_data was found, use the original AI response as the reply
+            if not action_data:
+                final_reply = ai_response_text
 
             return Response(
                 {
