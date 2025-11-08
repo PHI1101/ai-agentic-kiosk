@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react'; // Added useRef
 import { Container, Box, Grid, TextField, IconButton } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import MicIcon from '@mui/icons-material/Mic';
@@ -18,6 +18,7 @@ const MainPage = () => {
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
+  const processedTranscriptRef = useRef<string | null>(null); // New ref
 
   // Update agent status based on listening state
   useEffect(() => {
@@ -69,9 +70,15 @@ const MainPage = () => {
 
   // Process voice recognition results when listening stops
   useEffect(() => {
-    if (!listening && transcript) { // Only process if not listening and transcript exists
+    // Only process if not listening, transcript exists, and it's a new transcript
+    if (!listening && transcript && transcript !== processedTranscriptRef.current) {
       addMessage({ sender: 'user', text: transcript });
       processUserCommand(transcript);
+      processedTranscriptRef.current = transcript; // Mark as processed
+    }
+    // When listening stops and transcript is cleared, reset the ref
+    if (!listening && !transcript && processedTranscriptRef.current) {
+        processedTranscriptRef.current = null;
     }
   }, [listening, transcript, addMessage, processUserCommand]);
 

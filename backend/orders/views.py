@@ -245,7 +245,17 @@ class ChatWithAIView(APIView):
                 conversation_history.append({"role": "user" if message.get("sender") == "user" else "assistant", "content": message.get("text")})
             conversation_history.append({"role": "user", "content": user_message})
             
-            response = openai.chat.completions.create(model="gpt-4o", messages=conversation_history)
+            # --- Logging for debugging OpenAI call ---
+            print(f"OpenAI Call - Conversation History Length: {len(conversation_history)} messages")
+            total_content_length = sum(len(msg.get('content', '')) for msg in conversation_history)
+            print(f"OpenAI Call - Total Content Characters: {total_content_length}")
+            # --- End Logging ---
+
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo", # Changed model to gpt-3.5-turbo
+                messages=conversation_history
+            )
+            
             ai_response_text = response.choices[0].message.content
 
             final_reply = ai_response_text
