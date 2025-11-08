@@ -16,9 +16,11 @@ import axios from 'axios';
 const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
-  const { messages, addMessage, conversationState, setConversationState } = useChatStore();
-  const { setOrder } = useOrderStore();
-  const { speak } = useTextToSpeech(); // Destructure speak from useTextToSpeech
+  const { messages, addMessage, isLoading, error, clearChat } = useChatStore();
+  const { order, clearOrder, calculateTotalPrice } = useOrderStore();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');

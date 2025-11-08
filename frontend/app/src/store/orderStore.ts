@@ -19,44 +19,68 @@ interface OrderState {
   orderId: number | null;
   storeName: string | null;
   items: OrderItem[];
-  totalPrice: number;
-  status: string | null;
-  setOrder: (order: OrderStateSnapshot | {}) => void; // 백엔드 상태로 업데이트하는 함수, 빈 객체도 허용
-  clearCart: () => void;
+  setOrder: (order: OrderStateSnapshot | {}) => void;
+  addItem: (item: Omit<OrderItem, 'quantity'>) => void; // quantity는 내부적으로 관리
+  removeItem: (itemName: string) => void;
+  clearOrder: () => void; // clearCart 대신 clearOrder로 변경
+  calculateTotalPrice: () => number;
 }
 
-export const useOrderStore = create<OrderState>((set) => ({
+export const useOrderStore = create<OrderState>((set, get) => ({
   orderId: null,
   storeName: null,
   items: [],
-  totalPrice: 0,
-  status: null,
   setOrder: (order) => {
-    if (!order || Object.keys(order).length === 0) { // If order is empty or null, clear the cart
+    if (!order || Object.keys(order).length === 0) {
       set({
         orderId: null,
         storeName: null,
         items: [],
-        totalPrice: 0,
-        status: null,
       });
     } else {
-      // Type assertion to treat 'order' as OrderStateSnapshot
       const typedOrder = order as OrderStateSnapshot;
       set({
         orderId: typedOrder.orderId,
         storeName: typedOrder.storeName,
         items: typedOrder.items,
-        totalPrice: typedOrder.totalPrice,
-        status: typedOrder.status,
       });
     }
   },
-  clearCart: () => set({ 
-    orderId: null,
-    storeName: null,
-    items: [], 
-    totalPrice: 0, 
-    status: null 
-  }),
+  addItem: (item) =>
+    set((state) => {
+      const existingItemIndex = state.items.findIndex((i) => i.name === item.name);
+      if (existingItemIndex > -1) {
+        // If item exists, increase quantity
+        const newItems = [...state.items];
+        newItems[existingItemIndex].quantity += 1;
+        return { items: newItems };
+      } else {
+        // If item does not exist, add it with quantity 1
+        return { items: [...state.items, { ...item, quantity: 1 }] };
+      }
+    }),
+  removeItem: (itemName) =>
+    set((state) => {
+      const existingItemIndex = state.items.findIndex((i) => i.name === itemName);
+      if (existingItemIndex > -1) {
+        const newItems = [...state.items];
+        if (newItems[existingItemIndex].quantity > 1) {
+          // If quantity > 1, decrease quantity
+          newItems[existingItemIndex].quantity -= 1;
+          return { items: newItems };
+        } else {
+          // If quantity is 1, remove item
+          return { items: newItems.filter((i) => i.name !== itemName) };
+        }
+      }
+      return {}; // No change if item not found
+    }),
+  clearOrder: () =>
+    set({
+      orderId: null,
+      storeName: null,
+      items: [],
+    }),
+  calculateTotalPrice: () =>
+    get().items.reduce((total, item) => total + item.price * item.quantity, 0),
 }));
