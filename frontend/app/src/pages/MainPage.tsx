@@ -13,13 +13,14 @@ import axios from 'axios';
 const MainPage = () => {
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { speak } = useTextToSpeech();
-  const { messages, addMessage } = useChatStore();
-  const { setOrder } = useOrderStore(); // Use the new setOrder function
+  // Updated to include conversation state management
+  const { messages, addMessage, conversationState, setConversationState } = useChatStore();
+  const { setOrder } = useOrderStore();
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
 
-  // 페이지에 들어오면 바로 음성 인식 시작
+  // Start listening on component mount
   useEffect(() => {
     startListening();
     return () => {
@@ -32,57 +33,73 @@ const MainPage = () => {
     setAgentStatus(listening ? 'listening' : 'idle');
   }, [listening]);
 
-  // 사용자 메시지 처리 로직 (백엔드 API v2에 맞게 수정)
+  // Main logic to process user commands
   const processUserCommand = useCallback(async (command: string) => {
     if (!command) return;
 
     setAgentStatus('thinking');
 
     try {
+      // Exclude functions from the order store state
       const { setOrder, clearCart, ...orderData } = useOrderStore.getState();
 
       const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/chat/', {
         message: command,
-        history: messages.slice(-10), // Send last 10 messages as history
-        currentState: orderData, // Pass only data, not functions
+        history: messages.slice(-10), // Send last 10 messages
+        currentState: orderData,       // Send current order state
+        conversationState: conversationState, // Send current conversation state
       });
 
-      const { reply, currentOrder } = response.data;
+      // Destructure response data
+      const { reply, currentOrder, conversationState: newConversationState } = response.data;
 
-      addMessage({ sender: 'bot', text: reply });
+      // Add assistant's reply to chat and speak it
+      addMessage({ sender: 'assistant', text: reply });
       speak(reply);
       setAgentStatus('speaking');
 
+      // Update order state if it has changed
       if (currentOrder) {
-        setOrder(currentOrder); // Update order state from backend response
+        setOrder(currentOrder);
       }
-      resetTranscript(); // <--- Move resetTranscript here
+
+      // Update conversation state if it has changed
+      if (newConversationState) {
+        setConversationState(newConversationState);
+      }
+
+      resetTranscript();
 
     } catch (error) {
       console.error("Error sending command to backend:", error);
       const errorText = "죄송합니다, 서버와 통신 중 오류가 발생했습니다.";
-      addMessage({ sender: 'bot', text: errorText });
+      addMessage({ sender: 'assistant', text: errorText });
       speak(errorText);
       setAgentStatus('idle');
-      resetTranscript(); // <--- Also move it here for error cases
+      resetTranscript();
     }
-  }, [messages, addMessage, setOrder, speak, resetTranscript]);
+  }, [messages, addMessage, setOrder, speak, resetTranscript, conversationState, setConversationState]);
 
-  // 음성 인식 결과 처리
+  // Process voice recognition results
   useEffect(() => {
     if (transcript) {
       addMessage({ sender: 'user', text: transcript });
       processUserCommand(transcript);
-      // resetTranscript(); // <--- Removed
     }
-  }, [transcript, addMessage, processUserCommand]); // resetTranscript removed from dependencies
+  }, [transcript, addMessage, processUserCommand]);
 
-  // 텍스트 입력 처리
+  // Process text input
   const handleTextInputSend = () => {
+    if (!inputValue) return;
     addMessage({ sender: 'user', text: inputValue });
     processUserCommand(inputValue);
     setInputValue('');
   };
+
+  // Handle order confirmation from OrderSummary
+  const handleConfirmOrder = useCallback(() => {
+    processUserCommand("결제할게요"); // Trigger payment intent
+  }, [processUserCommand]);
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -113,7 +130,7 @@ const MainPage = () => {
           </Box>
         </Grid>
         <Grid item xs={12} md={5}>
-          <OrderSummary />
+          <OrderSummary onConfirmOrder={handleConfirmOrder} />
         </Grid>
       </Grid>
     </Container>

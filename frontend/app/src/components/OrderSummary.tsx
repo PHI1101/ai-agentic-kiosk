@@ -2,7 +2,11 @@ import React from 'react';
 import { Box, Paper, Typography, List, ListItem, ListItemText, Divider, Button } from '@mui/material';
 import { useOrderStore } from '../store/orderStore';
 
-const OrderSummary = () => {
+interface OrderSummaryProps {
+  onConfirmOrder: () => void; // New prop for confirming order
+}
+
+const OrderSummary = ({ onConfirmOrder }: OrderSummaryProps) => {
   const { items, totalPrice, storeName, clearCart } = useOrderStore();
 
   return (
@@ -30,7 +34,12 @@ const OrderSummary = () => {
         <Typography variant="h6">{totalPrice.toLocaleString()}원</Typography>
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
-        <Button variant="contained" color="primary" disabled={items.length === 0}>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          disabled={items.length === 0}
+          onClick={onConfirmOrder} // Call the new prop here
+        >
           주문 확정
         </Button>
         <Button variant="outlined" color="error" onClick={clearCart} disabled={items.length === 0}>

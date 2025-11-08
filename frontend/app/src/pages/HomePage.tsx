@@ -10,20 +10,21 @@ const HomePage = () => {
   const { transcript, startListening, stopListening } = useVoiceRecognition();
   const { speak } = useTextToSpeech();
 
-  const welcomeText = "안녕하세요! 저는 여러분의 주문을 쉽고 편리하게 도와드릴 AI 에이전트입니다. 주문 시작이라고 말씀하시거나 아래 버튼을 눌러주세요.";
+  // Updated welcome text to reflect the service name "보이스 오더"
+  const welcomeText = "안녕하세요! AI 키오스크 '보이스 오더'입니다. 주문을 쉽고 편리하게 도와드릴게요. '주문 시작'이라고 말씀하시거나 아래 버튼을 눌러주세요.";
 
-  // 페이지에 들어오면 안내 문구 읽어주기 및 음성 인식 시작
+  // Read the welcome message and start voice recognition on page load
   useEffect(() => {
     speak(welcomeText);
     startListening();
     return () => {
       stopListening();
-      window.speechSynthesis.cancel(); // 페이지 벗어날 때 음성 중지
+      window.speechSynthesis.cancel(); // Stop speech when leaving the page
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // "주문 시작" 음성 명령 감지
+  // Detect "주문 시작" (Start Order) voice command
   useEffect(() => {
     if (transcript.includes('주문 시작')) {
       navigate('/order');
@@ -48,11 +49,12 @@ const HomePage = () => {
       >
         <SmartToyIcon sx={{ fontSize: 80, color: 'primary.main' }} />
         <Typography variant="h3" component="h1" gutterBottom sx={{ mt: 2, fontWeight: 'bold' }}>
-          AI 주문 도우미
+          보이스 오더
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
+          {/* Dynamically split the welcome text for better formatting */}
           {welcomeText.split('. ').map((line, index) => (
-            <React.Fragment key={index}>{line}{index < 1 && '.'}<br /></React.Fragment>
+            <React.Fragment key={index}>{line}{index < 2 && '.'}<br /></React.Fragment>
           ))}
         </Typography>
         <Button variant="contained" size="large" onClick={handleOrderStart}>
