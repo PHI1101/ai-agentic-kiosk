@@ -217,6 +217,29 @@ class ChatWithAIView(APIView):
 
             
 
+        conversation_history = [{"role": "system", "content": system_prompt}]
+            if db_search_result:
+                conversation_history.append({"role": "system", "content": f"DB 검색 결과: {db_search_result}"})
+
+            for message in history:
+                role = "user" if message.get("sender") == "user" else "assistant"
+                conversation_history.append({"role": role, "content": message.get("text")})
+            
+            conversation_history.append({"role": "user", "content": user_message})
+            
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=conversation_history
+            )
+            
+            ai_response = response.choices[0].message.content
+            
+            return Response({
+                'reply': ai_response, 
+                'currentOrder': current_order_state,
+                'conversationState': conversation_state # Pass back the state
+            })
+
         except json.JSONDecodeError:
             return Response({'error': 'Invalid JSON'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
