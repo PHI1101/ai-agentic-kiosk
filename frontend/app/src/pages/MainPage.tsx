@@ -73,10 +73,10 @@ const MainPage = () => {
 
     } catch (error) {
       console.error("Error sending command to backend:", error);
-      console.error("Full Axios error response:", error.response); // Log full response
 
       let errorText = "죄송합니다, 서버와 통신 중 오류가 발생했습니다.";
       if (axios.isAxiosError(error) && error.response) {
+        console.error("Full Axios error response:", error.response); // Log full response
         if (error.response.data && error.response.data.error) {
           errorText = `백엔드 오류: ${error.response.data.error}`;
         } else if (error.response.data && error.response.data.detail) { // Common DRF error key
