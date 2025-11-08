@@ -28,8 +28,9 @@ const HomePage = () => {
   useEffect(() => {
     if (transcript.includes('주문 시작')) {
       navigate('/order');
+      resetTranscript(); // Reset transcript after command is detected and acted upon
     }
-  }, [transcript, navigate]);
+  }, [transcript, navigate, resetTranscript]); // Add resetTranscript to dependency array
 
   const handleOrderStart = () => {
     navigate('/order');
