@@ -1,32 +1,47 @@
-# 다음 단계 (Next Steps)
+# Next Steps for VoiceOrder AI Kiosk Project
 
-이 문서는 현재 진행 중인 AI 키오스크 프로젝트의 다음 주요 개선 사항을 요약합니다.
+This document summarizes the work completed so far and outlines areas for future improvement and development.
 
-## 1. 개선된 메뉴 추천 흐름 구현
+## Work Completed
 
-현재 AI 키오스크는 사용자가 특정 음식 종류를 요청하면 해당 음식 종류에 해당하는 모든 메뉴를 나열합니다. 사용자 피드백에 따라, 대화 흐름을 더욱 자연스럽고 직관적으로 개선하기 위해 다음과 같은 메뉴 추천 흐름을 구현해야 합니다.
+1.  **Frontend Build Error (TS18046) Fix**: Resolved a TypeScript error in `MainPage.tsx` related to accessing `error.response` without proper type checking.
+2.  **Backend 500 Internal Server Error Fix**: Corrected a `NameError` in `ChatWithAIView` (`actual_intent` vs `intent`) that caused server-side crashes.
+3.  **Missing Burger Data Integration**: Added a new Django migration (`0007_add_momstouch.py`) to seed "Mom's Touch" store and burger menu items into the database.
+4.  **Improved NLU Logic**: Refined the `simple_nlu` function in `views.py` by removing premature `order_food` intent detection, allowing the AI to handle item ordering more flexibly based on context.
+5.  **Frontend UI & Voice/TTS Functionality Refinement**: 
+    *   Reverted `ChatInterface.tsx` and `MainPage.tsx` to the previous UI layout based on user preference, moving input controls back to `MainPage.tsx`.
+    *   Ensured Text-to-Speech (TTS) functionality for assistant messages is correctly handled within `ChatInterface.tsx`.
+    *   Modified voice recognition to be user-initiated via a microphone button, removing automatic start on component mount for better user control and browser permission handling.
+6.  **Enhanced Ordering Logic (Price & Store Ambiguity)**:
+    *   Modified the `_update_order` helper function in `views.py` to accept `store_name` as an argument, enabling unique identification of `MenuItem` objects even if names are duplicated across stores.
+    *   Updated the AI system prompt to strictly instruct the AI to include `store_name` in the `add_to_cart` JSON action and to ask for clarification if a menu item is ambiguous (exists in multiple stores).
+    *   Adjusted the JSON parsing logic in `ChatWithAIView` to correctly extract and utilize the `store_name` for accurate order processing.
+7.  **Backend Performance & Frontend Rendering Error Fixes**:
+    *   Optimized `db_search_result` generation in `views.py` to perform database filtering efficiently, addressing `499` (Client Closed Request) errors caused by long backend processing times.
+    *   Temporarily switched the OpenAI model from `gpt-4o` to `gpt-3.5-turbo` to evaluate and mitigate latency issues.
+    *   Implemented `processedTranscriptRef` in `MainPage.tsx` to ensure each unique voice `transcript` is processed only once, resolving "too many re-renders" (`Minified React error #185`) in the frontend.
+8.  **Robust AI Response JSON Parsing**: Enhanced the backend's JSON parsing logic to gracefully handle cases where the AI might output raw JSON directly (without the ````json\n...\n```` wrapper), ensuring `add_to_cart` actions are still processed correctly.
+9.  **Order Finalization Logic Implementation**: Implemented the `finalize_order` intent in `ChatWithAIView` to mark the current order as 'completed' in the database and clear the frontend cart, providing a functional "주문확정" (Order Confirmation) feature.
+10. **Cart Clear Error Fix**: Resolved a `TypeError` in `OrderSummary.tsx` by making the `useOrderStore.setOrder` function robust to empty `currentOrder` objects, ensuring the cart clears correctly after order finalization.
 
-### 1.1. 목표
+## Future Improvements and Enhancements
 
-*   사용자가 특정 음식 종류(예: "버거", "커피")를 요청하면, 해당 음식 종류를 제공하는 **가게 목록**을 먼저 보여줍니다.
-*   사용자가 가게를 선택하면, 해당 가게에서 제공하는 **메뉴 항목**을 보여줍니다.
-
-### 1.2. 구현 상세
-
-#### 1.2.1. `backend/orders/views.py` 수정
-
-*   **`simple_nlu` 함수 개선:**
-    *   **가게 목록 요청 의도 감지:** "가게 보여줘", "어떤 가게가 있어?", "[음식 종류] 파는 가게 알려줘" 등과 같은 사용자 발화에서 가게 목록을 요청하는 의도를 감지해야 합니다.
-    *   **특정 가게 선택 의도 감지:** "롯데리아요", "맘스터치", "[가게 이름] 메뉴 보여줘" 등과 같은 사용자 발화에서 특정 가게를 선택하는 의도를 감지해야 합니다.
-
-*   **`ChatWithAIView` 클래스 개선:**
-    *   **대화 상태 관리:** `currentState` 객체를 확장하여 사용자가 현재 어떤 음식 종류를 찾고 있는지, 어떤 가게 목록이 제시되었는지, 어떤 가게가 선택되었는지 등의 대화 상태를 유지해야 합니다. 이는 다음 대화 턴에서 AI가 적절하게 응답하는 데 필수적입니다.
-    *   **가게 목록 제시 로직:**
-        *   사용자가 음식 종류를 요청하면, `MenuItem` 모델을 쿼리하여 해당 음식 종류를 제공하는 모든 `Store`를 찾고, 이들의 이름을 사용자에게 제시하는 응답을 생성합니다.
-        *   예시 응답: "현재 버거를 판매하는 가게는 롯데리아와 맘스터치가 있습니다. 어느 가게 메뉴를 보시겠어요?"
-    *   **선택된 가게 메뉴 목록 제시 로직:**
-        *   사용자가 가게를 선택하면, 해당 `Store`의 `MenuItem`들을 쿼리하여 메뉴 이름과 가격을 사용자에게 제시하는 응답을 생성합니다.
-        *   예시 응답: "롯데리아에는 불고기버거(4500원), 새우버거(4500원), 데리버거(3000원)가 있습니다."
-    *   **응답 생성:** OpenAI API 호출 전에 `system_prompt`와 `db_search_result`를 동적으로 구성하여, AI가 개선된 흐름에 맞춰 자연스럽게 응답하도록 유도합니다.
-
----
+1.  **Full Order Finalization Workflow**:
+    *   **Payment Integration**: Implement actual payment processing (e.g., simulated payment gateway integration).
+    *   **Order Management**: Integrate with a kitchen display system (KDS) or a more comprehensive order management system.
+    *   **Order Tracking**: Provide a unique order number to the user for tracking.
+2.  **Advanced Ordering Options**:
+    *   **Quantity Specification**: Allow users to specify item quantities (e.g., "불고기버거 2개 주세요"). This will require updates to NLU and AI prompt instructions.
+    *   **Order Modification**: Implement functionality for users to remove specific items from the cart or modify quantities before finalization.
+    *   **Order Cancellation**: Allow users to cancel an entire order.
+3.  **Enhanced User Experience**:
+    *   **Store Selection Guidance**: Improve the AI's guidance when multiple stores offer the same item, offering a more guided selection process (e.g., "A점에서 드릴까요, B점에서 드릴까요?").
+    *   **AI Model Optimization**: Re-evaluate the performance and cost-effectiveness of `gpt-4o` versus `gpt-3.5-turbo` after all system optimizations. Consider implementing dynamic model selection based on query complexity or user preferences.
+    *   **Improved Error Feedback**: Provide more specific and user-friendly error messages on the frontend for various backend failures.
+    *   **Visual Feedback for Voice Status**: Implement clearer visual cues for voice recognition status (e.g., "듣고 있어요...", "생각 중...").
+    *   **Accessibility**: Continue to prioritize and implement barrier-free accessibility features for visually, hearing, and physically impaired users, including AI voice guidance and visual guidance.
+    *   **UI/UX Polish**: Further refine the overall chat interface, order summary display, and AI avatar animations for a more polished user experience.
+4.  **System Robustness & Maintainability**:
+    *   **Deployment Automation**: Streamline the deployment process, especially for database migrations on platforms like Railway (e.g., using Railway's build hooks or custom deployment scripts).
+    *   **Comprehensive Testing**: Develop a more extensive suite of unit and integration tests for both frontend and backend components.
+    *   **Code Documentation**: Enhance inline code comments and overall project documentation.
