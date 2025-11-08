@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 
 interface MessageBubbleProps {
-  sender: 'user' | 'bot';
+  sender: 'user' | 'assistant';
   text: string;
 }
 

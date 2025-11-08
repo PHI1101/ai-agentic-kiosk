@@ -15,7 +15,8 @@ const MainPage = () => {
   const { speak } = useTextToSpeech();
   // Updated to include conversation state management
   const { messages, addMessage, conversationState, setConversationState } = useChatStore();
-  const { setOrder } = useOrderStore();
+  // setOrder is accessed via useOrderStore.getState().setOrder within processUserCommand
+  // to avoid unnecessary dependency in useCallback and unused-vars warning.
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
@@ -78,7 +79,7 @@ const MainPage = () => {
       setAgentStatus('idle');
       resetTranscript();
     }
-  }, [messages, addMessage, setOrder, speak, resetTranscript, conversationState, setConversationState]);
+  }, [messages, addMessage, speak, resetTranscript, conversationState, setConversationState]);
 
   // Process voice recognition results
   useEffect(() => {
