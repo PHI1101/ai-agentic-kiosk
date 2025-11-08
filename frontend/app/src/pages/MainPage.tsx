@@ -10,6 +10,7 @@ import AiAgentAvatar, { AgentStatus } from '../components/AiAgentAvatar';
 import useVoiceRecognition from '../hooks/useVoiceRecognition';
 import { useChatStore } from '../store/chatStore';
 import { useOrderStore } from '../store/orderStore';
+import { useTextToSpeech } from '../hooks/useTextToSpeech'; // Import useTextToSpeech
 import axios from 'axios';
 
 const MainPage = () => {
@@ -17,6 +18,7 @@ const MainPage = () => {
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage, conversationState, setConversationState } = useChatStore();
   const { setOrder } = useOrderStore();
+  const { speak } = useTextToSpeech(); // Destructure speak from useTextToSpeech
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
@@ -53,7 +55,7 @@ const MainPage = () => {
 
       addMessage({ sender: 'assistant', text: reply });
       setAgentStatus('speaking');
-      speak(reply);
+      speak(reply); // Now speak is available
 
       // Navigate to payment page if backend requests it
       if (action === 'navigate_to_payment') {
@@ -74,7 +76,7 @@ const MainPage = () => {
       addMessage({ sender: 'assistant', text: errorText });
       resetTranscript();
     }
-  }, [messages, addMessage, resetTranscript, conversationState, setConversationState, setOrder, navigate]);
+  }, [messages, addMessage, resetTranscript, conversationState, setConversationState, setOrder, navigate, speak]); // Added speak to dependency array
 
   useEffect(() => {
     if (!listening && transcript && transcript !== processedTranscriptRef.current) {
