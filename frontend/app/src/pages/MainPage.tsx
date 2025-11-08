@@ -16,19 +16,24 @@ import axios from 'axios';
 const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
-  const { messages, addMessage, isLoading, error, clearChat } = useChatStore();
-  const { order, clearOrder, calculateTotalPrice } = useOrderStore();
+  const { messages, addMessage, conversationState, setConversationState } = useChatStore();
+  const { orderId, storeName, items, setOrder, clearOrder, calculateTotalPrice } = useOrderStore();
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+  const { speak, speaking } = useTextToSpeech();
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
   const processedTranscriptRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setAgentStatus(listening ? 'listening' : 'idle');
-  }, [listening]);
+    if (speaking) {
+      setAgentStatus('speaking');
+    } else {
+      setAgentStatus(listening ? 'listening' : 'idle');
+    }
+  }, [listening, speaking]);
 
   const processUserCommand = useCallback(async (command: string) => {
     if (!command) return;

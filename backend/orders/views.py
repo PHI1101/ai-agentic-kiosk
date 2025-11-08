@@ -90,6 +90,13 @@ def simple_nlu(text, conversation_state=None):
         intent['intent'] = 'payment_cancel'
         return intent
 
+    # Check for payment confirmation if awaiting it
+    if conversation_state and conversation_state.get('awaiting_payment_confirmation'):
+        confirmation_keywords = ['네', '응', '예', '맞아', '좋아', '그렇게']
+        if any(kw in text for kw in confirmation_keywords):
+            intent['intent'] = 'payment_success'
+            return intent
+
     # '아니요'가 '추가로 필요하신 거 있으세요?'에 대한 응답일 경우, 주문 확정으로 간주
     # 이 로직은 OpenAI의 system_prompt와 연계하여 작동해야 합니다.
     if '아니요' in text and conversation_state and conversation_state.get('last_ai_question') == '추가로 필요하신 거 있으세요?':
@@ -169,6 +176,7 @@ class ChatWithAIView(APIView):
                         order.status = 'awaiting_payment'
                         order.save()
                         current_order_state['status'] = 'awaiting_payment'
+                        conversation_state['awaiting_payment_confirmation'] = True
                         return Response({
                             'reply': "결제 페이지로 이동합니다. 결제 방법을 선택해주세요.",
                             'action': 'navigate_to_payment',
@@ -204,11 +212,12 @@ class ChatWithAIView(APIView):
                     order.status = 'pending' # Revert to pending
                     order.save()
                     current_order_state['status'] = 'pending'
+                    conversation_state['awaiting_payment_confirmation'] = False # Reset
                     return Response({
                         'reply': "결제를 취소하고 주문 화면으로 돌아갑니다.",
                         'action': 'navigate_to_order',
                         'currentOrder': current_order_state,
-                        'conversationState': conversation_state
+                        'conversationState': conversation_state # Pass updated conversationState
                     })
 
             if intent == 'find_stores_by_category':
@@ -251,7 +260,7 @@ class ChatWithAIView(APIView):
                 '}\n'
                 '```\n'
                 "   - `item_name`과 `store_name`에는 'DB 검색 결과'에 명시된 정확한 전체 이름을 사용해야 해. 사용자가 모호하게 말하면, 명확한 메뉴를 다시 물어봐줘."
-                "3. **결제 안내:** 사용자가 '카드 결제', 'QR 결제' 등 결제 방식을 말하면, 그에 맞는 안내 메시지를 생성해줘. 예를 들어 '카드로 결제할게요'라고 하면 '네, 카드를 아래쪽 리더기에 삽입해주세요.' 와 같이 답변해. 이 때는 JSON을 생성하면 안 돼."
+                "3. **결제 안내:** 사용자가 '카드 결제', 'QR 결제' 등 결제 방식을 말하면, 그에 맞는 안내 메시지를 생성해줘. 예를 들어 '카드로 결제할게요'라고 하면 '네, 카드 결제를 진행합니다. 잠시만 기다려주세요.' 와 같이 답변해. 이 때는 JSON을 생성하면 안 돼."
                 "4. **일반 대화:** 주문과 관련 없는 일반 대화나, JSON 행동이 필요 없는 경우에는 JSON 블록 없이 자유롭게 답변해."
                 "5. **금지된 행동:** '결제할게', '주문 완료' 같은 말에는 직접 반응하지 마. 백엔드가 이 말을 먼저 처리해서 결제 페이지로 안내할 거야. 또한 '결제 성공', '결제 취소' 같은 시스템 용어에도 반응하지 마."
                 "6. **명확한 안내:** 가게 이름, 메뉴 이름, 가격을 명확하게 말해서 사용자가 혼동하지 않게 해야 해."
@@ -325,6 +334,7 @@ class ChatWithAIView(APIView):
                         order.status = 'awaiting_payment'
                         order.save()
                         current_order_state['status'] = 'awaiting_payment'
+                        conversation_state['awaiting_payment_confirmation'] = True # Set this when navigating to payment
                         return Response({
                             'reply': final_reply,
                             'action': 'navigate_to_payment',
@@ -334,6 +344,14 @@ class ChatWithAIView(APIView):
                     except Order.DoesNotExist:
                         pass # 오류 처리
             
+            # Check if the AI's reply is a payment instruction and set awaiting_payment_confirmation
+            if "카드 결제를 진행합니다. 잠시만 기다려주세요." in final_reply or \
+               "QR 결제를 진행합니다. 잠시만 기다려주세요." in final_reply: # Assuming QR payment instruction might also exist
+                conversation_state['awaiting_payment_confirmation'] = True
+            else:
+                # If not a payment instruction, ensure awaiting_payment_confirmation is false
+                conversation_state['awaiting_payment_confirmation'] = False
+
             # OpenAI의 응답이 JSON이 아니면서, '추가로 필요하신 거 있으세요?'에 대한 '아니요'가 아닌 경우
             # 또는 OpenAI가 결제 안내 메시지를 생성한 경우 (simple_nlu에서 finalize_order로 처리되지 않은 경우)
             # conversation_state에 마지막 AI 질문 저장

@@ -7,7 +7,8 @@ interface OrderSummaryProps {
 }
 
 const OrderSummary = ({ onConfirmOrder }: OrderSummaryProps) => {
-  const { items, totalPrice, storeName, clearCart } = useOrderStore();
+  const { items, storeName, clearOrder, calculateTotalPrice } = useOrderStore();
+  const totalPrice = calculateTotalPrice();
 
   return (
     <Paper elevation={3} sx={{ p: 2, mt: 2 }}>
@@ -42,7 +43,7 @@ const OrderSummary = ({ onConfirmOrder }: OrderSummaryProps) => {
         >
           주문 확정
         </Button>
-        <Button variant="outlined" color="error" onClick={clearCart} disabled={items.length === 0}>
+        <Button variant="outlined" color="error" onClick={clearOrder} disabled={items.length === 0}>
           전체 취소
         </Button>
       </Box>

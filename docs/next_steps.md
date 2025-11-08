@@ -45,3 +45,4 @@ This document summarizes the work completed so far and outlines areas for future
     *   **Deployment Automation**: Streamline the deployment process, especially for database migrations on platforms like Railway (e.g., using Railway's build hooks or custom deployment scripts).
     *   **Comprehensive Testing**: Develop a more extensive suite of unit and integration tests for both frontend and backend components.
     *   **Code Documentation**: Enhance inline code comments and overall project documentation.
+    *   **Frontend Build Tooling Issue**: The `replace` tool in the development environment consistently fails to perform multi-line string replacements in `MainPage.tsx`, necessitating a manual `read_file` and `write_file` approach for certain code modifications. Investigate and resolve this tool limitation.
