@@ -26,15 +26,15 @@ def get_category_from_item(item_name):
     if '과일' in item_name: return '과일'
     return None
 
-def _update_order(item_name, current_order_state):
+def _update_order(item_name, store_name, current_order_state): # Added store_name
     """
     Adds a specified item to the order or creates a new order.
     Returns the updated order state.
     """
-    menu_item = MenuItem.objects.filter(name__iexact=item_name).first()
+    # Filter by both name and store name
+    menu_item = MenuItem.objects.filter(name__iexact=item_name, store__name__iexact=store_name).first()
     if not menu_item:
-        # This should not happen if AI is working correctly
-        return None, "죄송합니다. 해당 메뉴를 찾을 수 없습니다."
+        return None, f"죄송합니다. '{store_name}'에서 '{item_name}' 메뉴를 찾을 수 없습니다."
 
     order = None
     order_id = current_order_state.get('orderId')
@@ -71,7 +71,7 @@ def _update_order(item_name, current_order_state):
         'totalPrice': float(total_price),
         'status': 'pending'
     }
-    return updated_order_state, f"{menu_item.name}을(를) 장바구니에 추가했습니다."
+    return updated_order_state, f"{menu_item.store.name}의 {menu_item.name}을(를) 장바구니에 추가했습니다."
 
 
 def simple_nlu(text, conversation_state=None):
@@ -180,10 +180,12 @@ class ChatWithAIView(APIView):
                 '{\n'
                 '  "action": "add_to_cart",\n'
                 '  "item_name": "메뉴이름",\n'
+                '  "store_name": "가게이름",\n' # Added store_name
                 '  "reply": "장바구니에 추가했습니다. 추가로 필요하신 거 있으세요?"\n'
                 '}\n'
                 '```\n'
                 "   - `item_name`에는 'DB 검색 결과'에 명시된 메뉴의 정확한 전체 이름을 사용해야 해. '커피'나 '버거' 같은 카테고리 이름이 아니라 '아메리카노 (ICE)'나 '싸이버거' 같은 구체적인 전체 이름을 사용해야만 해. 사용자가 모호하게 말하면, 주문을 실행하기 전에 명확한 메뉴를 다시 물어봐줘."
+                "   - `store_name`에는 'DB 검색 결과'에 명시된 메뉴가 속한 가게의 정확한 전체 이름을 사용해야 해. 만약 메뉴가 여러 가게에 있다면, 사용자에게 어떤 가게의 메뉴를 원하는지 명확히 물어본 후 `store_name`을 포함한 JSON을 생성해야 해." # Added instruction for store_name
                 "   - `reply`에는 사용자에게 보여줄 자연스러운 확인 메시지를 담아줘."
                 "3. **일반 대화:** 주문과 관련 없는 일반 대화나, JSON 행동이 필요 없는 경우에는 JSON 블록 없이 자유롭게 답변해."
                 "4. **명확한 안내:** 가게 이름, 메뉴 이름, 가격을 명확하게 말해서 사용자가 혼동하지 않게 해야 해."
@@ -232,17 +234,20 @@ class ChatWithAIView(APIView):
                 action_json_str = json_match.group(1)
                 try:
                     action_data = json.loads(action_json_str)
-                    final_reply = action_data.get('reply', "주문이 처리되었습니다.") # Use reply from JSON
+                    final_reply = action_data.get('reply', "주문이 처리되었습니다.")
                     
                     if action_data.get('action') == 'add_to_cart':
                         item_name = action_data.get('item_name')
-                        if item_name:
-                            updated_order, _ = _update_order(item_name, current_order_state)
-                            if not updated_order: # Handle case where item is not found
-                                final_reply = "죄송합니다. 해당 메뉴를 찾을 수 없어 주문에 실패했습니다."
+                        store_name = action_data.get('store_name') # Extract store_name
+                        if item_name and store_name: # Both item_name and store_name are required
+                            updated_order, error_message = _update_order(item_name, store_name, current_order_state) # Pass store_name
+                            if not updated_order:
+                                final_reply = error_message # Use specific error message from _update_order
                                 updated_order = current_order_state
+                        else:
+                            final_reply = "죄송합니다. 메뉴 이름과 가게 이름이 모두 필요합니다." # Error if missing
+                            updated_order = current_order_state
                 except json.JSONDecodeError:
-                    # If JSON is malformed, just use the full text as reply
                     final_reply = ai_response_text
 
             return Response({
