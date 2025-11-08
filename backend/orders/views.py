@@ -154,7 +154,7 @@ class ChatWithAIView(APIView):
                 })
 
             # --- 4. Fallback to OpenAI for general queries ---
-            if actual_intent == 'general_query':
+            if intent == 'general_query':
                 openai.api_key = settings.OPENAI_API_KEY
                 
                 system_prompt = (
