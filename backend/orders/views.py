@@ -81,15 +81,6 @@ def simple_nlu(text, conversation_state=None):
         intent['intent'] = 'find_stores_by_category'
         return intent
 
-    # 5. Order Food (if item name is detected)
-    # This is a fallback, as more complex orders are handled by the AI
-    menu_item_match = MenuItem.objects.filter(name__icontains=text).first()
-    if menu_item_match:
-        intent['intent'] = 'order_food'
-        intent['entities']['item_name'] = menu_item_match.name
-        intent['entities']['quantity'] = 1 # Default quantity
-        return intent
-
     # Fallback to general query
     intent['intent'] = 'general_query'
     return intent
