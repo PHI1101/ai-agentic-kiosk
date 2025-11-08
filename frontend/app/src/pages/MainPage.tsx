@@ -73,7 +73,10 @@ const MainPage = () => {
 
     } catch (error) {
       console.error("Error sending command to backend:", error);
-      const errorText = "죄송합니다, 서버와 통신 중 오류가 발생했습니다.";
+      let errorText = "죄송합니다, 서버와 통신 중 오류가 발생했습니다.";
+      if (axios.isAxiosError(error) && error.response && error.response.data && error.response.data.error) {
+        errorText = `백엔드 오류: ${error.response.data.error}`;
+      }
       addMessage({ sender: 'assistant', text: errorText });
       speak(errorText);
       setAgentStatus('idle');
