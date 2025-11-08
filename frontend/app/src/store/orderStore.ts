@@ -21,7 +21,7 @@ interface OrderState {
   items: OrderItem[];
   totalPrice: number;
   status: string | null;
-  setOrder: (order: OrderStateSnapshot) => void; // 백엔드 상태로 업데이트하는 함수
+  setOrder: (order: OrderStateSnapshot | {}) => void; // 백엔드 상태로 업데이트하는 함수, 빈 객체도 허용
   clearCart: () => void;
 }
 
@@ -31,13 +31,27 @@ export const useOrderStore = create<OrderState>((set) => ({
   items: [],
   totalPrice: 0,
   status: null,
-  setOrder: (order) => set({
-    orderId: order.orderId,
-    storeName: order.storeName,
-    items: order.items,
-    totalPrice: order.totalPrice,
-    status: order.status,
-  }),
+  setOrder: (order) => {
+    if (!order || Object.keys(order).length === 0) { // If order is empty or null, clear the cart
+      set({
+        orderId: null,
+        storeName: null,
+        items: [],
+        totalPrice: 0,
+        status: null,
+      });
+    } else {
+      // Type assertion to treat 'order' as OrderStateSnapshot
+      const typedOrder = order as OrderStateSnapshot;
+      set({
+        orderId: typedOrder.orderId,
+        storeName: typedOrder.storeName,
+        items: typedOrder.items,
+        totalPrice: typedOrder.totalPrice,
+        status: typedOrder.status,
+      });
+    }
+  },
   clearCart: () => set({ 
     orderId: null,
     storeName: null,
