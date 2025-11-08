@@ -153,92 +153,94 @@ class ChatWithAIView(APIView):
                     'conversationState': conversation_state
                 })
 
-            # --- 3. Fallback to OpenAI for general queries and complex orders ---
-            openai.api_key = settings.OPENAI_API_KEY
-            
-            system_prompt = (
-                "너는 AI 키오스크 '보이스오더'의 친절한 안내원이야. 너의 목표는 사용자가 DB에 있는 메뉴를 주문하도록 돕는 거야."
-                "1. **DB 검색 결과 활용:** 사용자가 메뉴, 가게, 추천을 물어보면, 반드시 'DB 검색 결과' 섹션에 제공된 정보만을 사용해서 답변해야 해. 'DB 검색 결과'에 없는 것은 절대 언급하거나 제안해서는 안 돼."
-                "2. **주문 처리:** 사용자가 특정 메뉴를 주문하면, 'DB 검색 결과'에 있는 정확한 메뉴 이름과 가격을 확인하고, '[메뉴이름]을 장바구니에 담을까요?'라고 명확하게 되물어봐. 사용자가 '네'라고 답하면 주문이 처리될 거야."
-                "3. **추천 요청 처리:** 사용자가 '추천해줘' 또는 '뭐 먹을까?' 같이 일반적인 요청을 하면, 'DB 검색 결과'에 있는 '주문 가능한 주요 음식 종류'를 먼저 알려주고, 사용자가 선택하게 해야 해. 예: '현재 주문 가능한 음식 종류는 버거, 김밥, 커피 등이 있어요. 어떤 종류로 추천해드릴까요?'"
-                "4. **없는 메뉴 처리:** 사용자가 'DB 검색 결과'에 없는 메뉴나 음식 종류를 말하면, '죄송하지만, 요청하신 메뉴는 현재 제공되지 않아요. 대신 주문 가능한 [주요 음식 종류] 중에서 골라보시겠어요?'라고 정중하게 거절하고, 주문 가능한 옵션을 안내해야 해."
-                "5. **대화 기억 및 명확한 안내:** 사용자와의 이전 대화를 기억해서, 대화가 끊기지 않고 자연스럽게 주문으로 이어지도록 해야 해. 가게 이름, 메뉴 이름, 가격을 명확하게 말해서 사용자가 혼동하지 않게 해야 해."
-            )
-            
-            # Build DB search result for the AI prompt
-            db_search_result = ""
-            all_items = MenuItem.objects.all().select_related('store')
-            
-            # Find all available categories
-            available_categories = set()
-            for item in all_items:
-                category = get_category_from_item(item.name)
-                if category:
-                    available_categories.add(category)
+            # --- 4. Fallback to OpenAI for general queries ---
+            if actual_intent == 'general_query':
+                openai.api_key = settings.OPENAI_API_KEY
+                
+                system_prompt = (
+                    "너는 AI 키오스크 '보이스오더'의 친절한 안내원이야. 너의 목표는 사용자가 DB에 있는 메뉴를 주문하도록 돕는 거야."
+                    "1. **DB 검색 결과 활용:** 사용자가 메뉴, 가게, 추천을 물어보면, 반드시 'DB 검색 결과' 섹션에 제공된 정보만을 사용해서 답변해야 해. 'DB 검색 결과'에 없는 것은 절대 언급하거나 제안해서는 안 돼."
+                    "2. **추천 요청 처리:** 사용자가 '추천해줘' 또는 '뭐 먹을까?' 같이 일반적인 요청을 하면, 'DB 검색 결과'에 있는 '주문 가능한 주요 음식 종류'를 먼저 알려주고, 사용자가 선택하게 해야 해. 예: '현재 주문 가능한 음식 종류는 버거, 김밥, 커피 등이 있어요. 어떤 종류로 추천해드릴까요?'"
+                    "3. **없는 메뉴 처리:** 사용자가 'DB 검색 결과'에 없는 메뉴나 음식 종류를 말하면, '죄송하지만, 요청하신 메뉴는 현재 제공되지 않아요. 대신 주문 가능한 [주요 음식 종류] 중에서 골라보시겠어요?'라고 정중하게 거절하고, 주문 가능한 옵션을 안내해야 해."
+                    "4. **대화 기억 및 명확한 안내:** 사용자와의 이전 대화를 기억해서, 대화가 끊기지 않고 자연스럽게 주문으로 이어지도록 해야 해. 가게 이름, 메뉴 이름, 가격을 명확하게 말해서 사용자가 혼동하지 않게 해야 해."
+                )
+                
+                # Build DB search result for the AI prompt
+                db_search_result = ""
+                all_items = MenuItem.objects.all().select_related('store')
+                
+                # Find all available categories
+                available_categories = set()
+                for item in all_items:
+                    category = get_category_from_item(item.name)
+                    if category:
+                        available_categories.add(category)
 
-            # Find items relevant to the user's message
-            items_to_display = []
-            search_query = user_message
-            
-            # A simple search logic
-            q_objects = Q()
-            if 'category' in entities:
-                q_objects |= Q(name__icontains=entities['category'])
-            if 'store_name' in entities:
-                q_objects |= Q(store__name__icontains=entities['store_name'])
-            
-            # If no specific entity, search the whole message
-            if not q_objects:
-                q_objects |= Q(name__icontains=search_query) | Q(store__name__icontains=search_query)
+                # If the user asked for recommendation, set awaiting_category_selection
+                if "메뉴 추천해주세요" in user_message or "뭐 먹을까" in user_message:
+                    conversation_state['awaiting_category_selection'] = True
+                    db_search_result = f"주문 가능한 주요 음식 종류: {', '.join(sorted(list(available_categories)))}"
+                else:
+                    # A simple search logic for general queries
+                    q_objects = Q()
+                    if 'category' in entities:
+                        q_objects |= Q(name__icontains=entities['category'])
+                    if 'store_name' in entities:
+                        q_objects |= Q(store__name__icontains=entities['store_name'])
+                    
+                    if not q_objects:
+                        q_objects |= Q(name__icontains=user_message) | Q(store__name__icontains=user_message)
 
-            items_to_display = all_items.filter(q_objects).distinct()
+                    items_to_display = all_items.filter(q_objects).distinct()
 
-            # Format the search result string
-            stores_data = {}
-            if items_to_display:
-                for item in items_to_display:
-                    if item.store.name not in stores_data:
-                        stores_data[item.store.name] = []
-                    stores_data[item.store.name].append(f"{item.name}({int(item.price)}원)")
-            
-            result_texts = []
-            if available_categories:
-                result_texts.append(f"주문 가능한 주요 음식 종류: {', '.join(sorted(list(available_categories)))}")
+                    # Format the search result string
+                    stores_data = {}
+                    if items_to_display:
+                        for item in items_to_display:
+                            if item.store.name not in stores_data:
+                                stores_data[item.store.name] = []
+                            stores_data[item.store.name].append(f"{item.name}({int(item.price)}원)")
+                    
+                    result_texts = []
+                    if available_categories:
+                        result_texts.append(f"주문 가능한 주요 음식 종류: {', '.join(sorted(list(available_categories)))}")
 
-            if stores_data:
-                for store_name, items in sorted(stores_data.items()):
-                    result_texts.append(f"'{store_name}' 메뉴: {', '.join(items)}")
-            
-            if result_texts:
-                db_search_result = " ".join(result_texts)
-            else:
-                db_search_result = f"검색 결과 없음. 주문 가능한 주요 음식 종류는 {', '.join(sorted(list(available_categories)))}입니다."
+                    if stores_data:
+                        for store_name, items in sorted(stores_data.items()):
+                            result_texts.append(f"'{store_name}' 메뉴: {', '.join(items)}")
+                    
+                    if result_texts:
+                        db_search_result = " ".join(result_texts)
+                    else:
+                        db_search_result = f"검색 결과 없음. 주문 가능한 주요 음식 종류는 {', '.join(sorted(list(available_categories)))}입니다."
 
 
-            
+                conversation_history = [{"role": "system", "content": system_prompt}]
+                if db_search_result:
+                    conversation_history.append({"role": "system", "content": f"DB 검색 결과: {db_search_result}"})
 
-        conversation_history = [{"role": "system", "content": system_prompt}]
-            if db_search_result:
-                conversation_history.append({"role": "system", "content": f"DB 검색 결과: {db_search_result}"})
-
-            for message in history:
-                role = "user" if message.get("sender") == "user" else "assistant"
-                conversation_history.append({"role": role, "content": message.get("text")})
-            
-            conversation_history.append({"role": "user", "content": user_message})
-            
-            response = openai.chat.completions.create(
-                model="gpt-4o",
-                messages=conversation_history
-            )
-            
-            ai_response = response.choices[0].message.content
-            
-            return Response({
-                'reply': ai_response, 
-                'currentOrder': current_order_state,
-                'conversationState': conversation_state # Pass back the state
-            })
+                for message in history:
+                    role = "user" if message.get("sender") == "user" else "assistant"
+                    conversation_history.append({"role": role, "content": message.get("text")})
+                
+                conversation_history.append({"role": "user", "content": user_message})
+                
+                response = openai.chat.completions.create(
+                    model="gpt-4o",
+                    messages=conversation_history
+                )
+                
+                ai_response = response.choices[0].message.content
+                
+                return Response({
+                    'reply': ai_response, 
+                    'currentOrder': current_order_state,
+                    'conversationState': conversation_state # Pass back the state
+                })
+            # If actual_intent is not 'general_query' and not handled above, it means it's an unhandled structured intent.
+            # This should ideally not happen if all structured intents are handled.
+            # For now, let's return an error or a generic response.
+            return Response({'reply': "죄송합니다. 요청을 처리할 수 없습니다.", 'currentOrder': current_order_state, 'conversationState': conversation_state})
 
         except json.JSONDecodeError:
             return Response({'error': 'Invalid JSON'}, status=status.HTTP_400_BAD_REQUEST)
