@@ -110,8 +110,8 @@ class ChatWithAIView(APIView):
             if not user_message:
                 return Response({'error': 'Message not provided'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # --- 1. NLU to get intent and entities ---
-            nlu_result = simple_nlu(user_message, conversation_state)
+            # --- 1. NLU to get entities and basic intent ---
+            nlu_result = simple_nlu(user_message)
             intent = nlu_result['intent']
             entities = nlu_result['entities']
 
