@@ -43,9 +43,6 @@ const MainPage = () => {
 
       const { reply, currentOrder, conversationState: newConversationState, action } = response.data;
 
-      addMessage({ sender: 'assistant', text: reply });
-      setAgentStatus('speaking');
-
       if (currentOrder) {
         setOrder(currentOrder);
       }
@@ -54,9 +51,15 @@ const MainPage = () => {
         setConversationState(newConversationState);
       }
 
+      addMessage({ sender: 'assistant', text: reply });
+      setAgentStatus('speaking');
+      speak(reply);
+
       // Navigate to payment page if backend requests it
       if (action === 'navigate_to_payment') {
         navigate('/payment');
+      } else if (action === 'navigate_to_order') { // Added for payment_cancel action
+        navigate('/order');
       }
 
       resetTranscript();

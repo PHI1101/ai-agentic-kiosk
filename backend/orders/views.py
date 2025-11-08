@@ -1,7 +1,3 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .models import Store, MenuItem, Order, OrderItem
 import openai
 from django.conf import settings
 from django.db.models import Q
@@ -9,6 +5,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import json
 import re
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Store, MenuItem, Order, OrderItem
 
 # --- Helper Functions ---
 
@@ -26,7 +26,7 @@ def get_category_from_item(item_name):
     if '과일' in item_name: return '과일'
     return None
 
-def _update_order(item_name, store_name, current_order_state): # Added store_name
+def _update_order(item_name, store_name, current_order_state):
     """
     Adds a specified item to the order or creates a new order.
     Returns the updated order state.
@@ -42,7 +42,6 @@ def _update_order(item_name, store_name, current_order_state): # Added store_nam
         try:
             order = Order.objects.get(id=order_id)
             if order.store and order.store != menu_item.store:
-                # If the new item is from a different store, create a new order
                 order = Order.objects.create(store=menu_item.store)
             elif not order.store:
                 order.store = menu_item.store
@@ -91,7 +90,13 @@ def simple_nlu(text, conversation_state=None):
         intent['intent'] = 'payment_cancel'
         return intent
 
-    finalization_keywords = ['포장이요', '배달이요', '주문 완료', '결제', '계산', '돈 낼게']
+    # '아니요'가 '추가로 필요하신 거 있으세요?'에 대한 응답일 경우, 주문 확정으로 간주
+    # 이 로직은 OpenAI의 system_prompt와 연계하여 작동해야 합니다.
+    if '아니요' in text and conversation_state and conversation_state.get('last_ai_question') == '추가로 필요하신 거 있으세요?':
+        intent['intent'] = 'finalize_order'
+        return intent
+
+    finalization_keywords = ['포장이요', '배달이요', '주문 완료', '결제', '계산', '돈 낼게', '그만', '됐어']
     if any(kw in text for kw in finalization_keywords):
         intent['intent'] = 'finalize_order'
         return intent
@@ -110,6 +115,7 @@ def simple_nlu(text, conversation_state=None):
             intent['entities']['category'] = category
             break
 
+    # '네', '응', '예', '맞아', '좋아', '그렇게', '주문할게', '주문해줘' 등은 AI가 문맥을 파악하도록 general_query로 둠
     confirmation_keywords = ['네', '응', '예', '맞아', '좋아', '그렇게', '주문할게', '주문해줘']
     if any(kw in text for kw in confirmation_keywords):
         intent['intent'] = 'general_query'
@@ -249,6 +255,7 @@ class ChatWithAIView(APIView):
                 "4. **일반 대화:** 주문과 관련 없는 일반 대화나, JSON 행동이 필요 없는 경우에는 JSON 블록 없이 자유롭게 답변해."
                 "5. **금지된 행동:** '결제할게', '주문 완료' 같은 말에는 직접 반응하지 마. 백엔드가 이 말을 먼저 처리해서 결제 페이지로 안내할 거야. 또한 '결제 성공', '결제 취소' 같은 시스템 용어에도 반응하지 마."
                 "6. **명확한 안내:** 가게 이름, 메뉴 이름, 가격을 명확하게 말해서 사용자가 혼동하지 않게 해야 해."
+                "7. **'아니요' 처리:** 만약 AI가 '추가로 필요하신 거 있으세요?'라고 물었을 때 사용자가 '아니요'라고 답하면, 이는 주문을 확정하고 결제 단계로 넘어가겠다는 의미로 해석하고, '결제 페이지로 이동합니다. 결제 방법을 선택해주세요.'라고 안내해줘. 이 때는 JSON을 생성하면 안 돼."
             )
             
             db_search_result = ""
@@ -304,6 +311,33 @@ class ChatWithAIView(APIView):
                             updated_order = current_order_state
                 except json.JSONDecodeError:
                     pass
+
+            # AI의 응답이 '추가로 필요하신 거 있으세요?'에 대한 '아니요' 처리인 경우
+            if user_message.lower().strip() == '아니요' and conversation_state.get('last_ai_question') == '추가로 필요하신 거 있으세요?':
+                # 이 경우, simple_nlu에서 finalize_order 인텐트로 이미 처리되었을 것이므로,
+                # 여기서는 OpenAI의 응답을 무시하고 백엔드 로직이 우선하도록 합니다.
+                # 하지만 OpenAI가 '결제 페이지로 이동합니다...'와 같은 응답을 생성하도록 유도했으므로,
+                # 그 응답을 사용하고 action을 추가합니다.
+                final_reply = ai_response_text # OpenAI가 생성한 결제 안내 메시지
+                if current_order_state.get('orderId') and current_order_state.get('items'):
+                    try:
+                        order = Order.objects.get(id=current_order_state['orderId'])
+                        order.status = 'awaiting_payment'
+                        order.save()
+                        current_order_state['status'] = 'awaiting_payment'
+                        return Response({
+                            'reply': final_reply,
+                            'action': 'navigate_to_payment',
+                            'currentOrder': current_order_state,
+                            'conversationState': conversation_state
+                        })
+                    except Order.DoesNotExist:
+                        pass # 오류 처리
+            
+            # OpenAI의 응답이 JSON이 아니면서, '추가로 필요하신 거 있으세요?'에 대한 '아니요'가 아닌 경우
+            # 또는 OpenAI가 결제 안내 메시지를 생성한 경우 (simple_nlu에서 finalize_order로 처리되지 않은 경우)
+            # conversation_state에 마지막 AI 질문 저장
+            conversation_state['last_ai_question'] = final_reply if final_reply.endswith('?') else None
 
             return Response({
                 'reply': final_reply, 
