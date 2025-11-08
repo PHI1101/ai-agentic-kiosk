@@ -169,6 +169,28 @@ class ChatWithAIView(APIView):
                 conversation_state = {}
                 return Response({'reply': reply, 'currentOrder': current_order_state, 'conversationState': conversation_state})
 
+            if intent == 'finalize_order':
+                order_id = current_order_state.get('orderId')
+                if order_id:
+                    try:
+                        order = Order.objects.get(id=order_id)
+                        order.status = 'completed' # Mark as completed
+                        order.save()
+                        reply = f"주문이 성공적으로 완료되었습니다. 총 {current_order_state.get('totalPrice', 0)}원 결제 예정입니다."
+                        updated_order = {} # Clear the current order state
+                    except Order.DoesNotExist:
+                        reply = "죄송합니다. 완료할 주문을 찾을 수 없습니다."
+                        updated_order = current_order_state
+                else:
+                    reply = "현재 진행 중인 주문이 없습니다."
+                    updated_order = current_order_state
+                
+                return Response({
+                    'reply': reply,
+                    'currentOrder': updated_order,
+                    'conversationState': conversation_state
+                })
+
             # --- Fallback to OpenAI for general queries and confirmations ---
             openai.api_key = settings.OPENAI_API_KEY
             
@@ -180,13 +202,14 @@ class ChatWithAIView(APIView):
                 '{\n'
                 '  "action": "add_to_cart",\n'
                 '  "item_name": "메뉴이름",\n'
-                '  "store_name": "가게이름",\n' # Added store_name
+                '  "store_name": "가게이름",\n'
                 '  "reply": "장바구니에 추가했습니다. 추가로 필요하신 거 있으세요?"\n'
                 '}\n'
                 '```\n'
                 "   - `item_name`에는 'DB 검색 결과'에 명시된 메뉴의 정확한 전체 이름을 사용해야 해. '커피'나 '버거' 같은 카테고리 이름이 아니라 '아메리카노 (ICE)'나 '싸이버거' 같은 구체적인 전체 이름을 사용해야만 해. 사용자가 모호하게 말하면, 주문을 실행하기 전에 명확한 메뉴를 다시 물어봐줘."
-                "   - `store_name`에는 'DB 검색 결과'에 명시된 메뉴가 속한 가게의 정확한 전체 이름을 사용해야 해. 만약 메뉴가 여러 가게에 있다면, 사용자에게 어떤 가게의 메뉴를 원하는지 명확히 물어본 후 `store_name`을 포함한 JSON을 생성해야 해." # Added instruction for store_name
+                "   - `store_name`에는 'DB 검색 결과'에 명시된 메뉴가 속한 가게의 정확한 전체 이름을 사용해야 해. 만약 메뉴가 여러 가게에 있다면, 사용자에게 어떤 가게의 메뉴를 원하는지 명확히 물어본 후 `store_name`을 포함한 JSON을 생성해야 해."
                 "   - `reply`에는 사용자에게 보여줄 자연스러운 확인 메시지를 담아줘."
+                "   - **주의:** 사용자가 '결제할게', '주문 완료' 등으로 주문을 최종 확정하려 할 때는 JSON을 생성하지 말고, 일반적인 확인 메시지를 보내줘. 백엔드에서 주문을 완료 처리할 거야."
                 "3. **일반 대화:** 주문과 관련 없는 일반 대화나, JSON 행동이 필요 없는 경우에는 JSON 블록 없이 자유롭게 답변해."
                 "4. **명확한 안내:** 가게 이름, 메뉴 이름, 가격을 명확하게 말해서 사용자가 혼동하지 않게 해야 해."
             )
