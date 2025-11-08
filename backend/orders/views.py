@@ -185,11 +185,12 @@ class ChatWithAIView(APIView):
                     reply = "현재 진행 중인 주문이 없습니다."
                     updated_order = current_order_state
                 
-                return Response({
-                    'reply': reply,
-                    'currentOrder': updated_order,
-                    'conversationState': conversation_state
-                })
+                return Response(
+                {
+                'reply': reply, 
+                'currentOrder': updated_order,
+                'conversationState': conversation_state
+            })
 
             # --- Fallback to OpenAI for general queries and confirmations ---
             openai.api_key = settings.OPENAI_API_KEY
