@@ -1,27 +1,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Container, Button, Box, Grid, TextField, IconButton } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
+import { Container, Box, Grid } from '@mui/material';
 import ChatInterface from '../components/ChatInterface';
 import OrderSummary from '../components/OrderSummary';
 import AiAgentAvatar, { AgentStatus } from '../components/AiAgentAvatar';
 import useVoiceRecognition from '../hooks/useVoiceRecognition';
-import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { useChatStore } from '../store/chatStore';
 import { useOrderStore } from '../store/orderStore';
 import axios from 'axios';
 
 const MainPage = () => {
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
-  const { speak } = useTextToSpeech();
-  // Updated to include conversation state management
   const { messages, addMessage, conversationState, setConversationState } = useChatStore();
-  // setOrder is accessed via useOrderStore.getState().setOrder within processUserCommand
-  // to avoid unnecessary dependency in useCallback and unused-vars warning.
+  const { setOrder } = useOrderStore();
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
 
-  // Start listening on component mount
+  // Automatically start listening on component mount
   useEffect(() => {
     startListening();
     return () => {
@@ -30,6 +25,7 @@ const MainPage = () => {
     };
   }, [startListening, stopListening]);
 
+  // Update agent status based on listening state
   useEffect(() => {
     setAgentStatus(listening ? 'listening' : 'idle');
   }, [listening]);
@@ -41,30 +37,25 @@ const MainPage = () => {
     setAgentStatus('thinking');
 
     try {
-      // Exclude functions from the order store state
-      const { setOrder, clearCart, ...orderData } = useOrderStore.getState();
+      const { ...orderData } = useOrderStore.getState();
 
       const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/chat/', {
         message: command,
-        history: messages.slice(-10), // Send last 10 messages
-        currentState: orderData,       // Send current order state
-        conversationState: conversationState, // Send current conversation state
+        history: messages.slice(-10),
+        currentState: orderData,
+        conversationState: conversationState,
       });
 
-      // Destructure response data
       const { reply, currentOrder, conversationState: newConversationState } = response.data;
 
-      // Add assistant's reply to chat and speak it
+      // Add assistant's reply to chat. Speaking is handled by ChatInterface.
       addMessage({ sender: 'assistant', text: reply });
-      speak(reply);
-      setAgentStatus('speaking');
+      setAgentStatus('speaking'); // Status is now managed here, speaking is done in child
 
-      // Update order state if it has changed
       if (currentOrder) {
         setOrder(currentOrder);
       }
 
-      // Update conversation state if it has changed
       if (newConversationState) {
         setConversationState(newConversationState);
       }
@@ -73,24 +64,16 @@ const MainPage = () => {
 
     } catch (error) {
       console.error("Error sending command to backend:", error);
-
+      setAgentStatus('idle');
       let errorText = "죄송합니다, 서버와 통신 중 오류가 발생했습니다.";
       if (axios.isAxiosError(error) && error.response) {
-        console.error("Full Axios error response:", error.response); // Log full response
-        if (error.response.data && error.response.data.error) {
-          errorText = `백엔드 오류: ${error.response.data.error}`;
-        } else if (error.response.data && error.response.data.detail) { // Common DRF error key
-          errorText = `백엔드 오류: ${error.response.data.detail}`;
-        } else if (error.message) {
-          errorText = `네트워크 오류: ${error.message}`;
-        }
+        // More specific error handling can be added here
+        errorText = `오류: ${error.response.data.error || error.response.data.detail || error.message}`;
       }
       addMessage({ sender: 'assistant', text: errorText });
-      speak(errorText);
-      setAgentStatus('idle');
       resetTranscript();
     }
-  }, [messages, addMessage, speak, resetTranscript, conversationState, setConversationState]);
+  }, [messages, addMessage, resetTranscript, conversationState, setConversationState, setOrder]);
 
   // Process voice recognition results
   useEffect(() => {
@@ -110,36 +93,24 @@ const MainPage = () => {
 
   // Handle order confirmation from OrderSummary
   const handleConfirmOrder = useCallback(() => {
-    processUserCommand("결제할게요"); // Trigger payment intent
+    processUserCommand("결제할게요");
   }, [processUserCommand]);
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Grid container spacing={3}>
         <Grid item xs={12} md={7}>
-          <AiAgentAvatar status={agentStatus} />
-          <ChatInterface />
-          <Box sx={{ mt: 2, display: 'flex', gap: 1}}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="텍스트로 입력..."
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleTextInputSend()}
-            />
-            <IconButton color="primary" onClick={handleTextInputSend} disabled={!inputValue}>
-              <SendIcon />
-            </IconButton>
+          <Box sx={{ mb: 2, textAlign: 'center' }}>
+            <AiAgentAvatar status={agentStatus} />
           </Box>
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Button variant="contained" onClick={startListening} disabled={listening} sx={{ mr: 1 }}>
-              음성인식 시작
-            </Button>
-            <Button variant="contained" color="secondary" onClick={stopListening} disabled={!listening}>
-              음성인식 중지
-            </Button>
-          </Box>
+          <ChatInterface
+            inputValue={inputValue}
+            setInputValue={setInputValue}
+            handleTextInputSend={handleTextInputSend}
+            listening={listening}
+            startListening={startListening}
+            stopListening={stopListening}
+          />
         </Grid>
         <Grid item xs={12} md={5}>
           <OrderSummary onConfirmOrder={handleConfirmOrder} />
