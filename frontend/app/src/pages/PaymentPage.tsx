@@ -10,7 +10,8 @@ import AiAgentAvatar, { AgentStatus } from '../components/AiAgentAvatar';
 
 const PaymentPage = () => {
   const navigate = useNavigate();
-  const { orderId, items, totalPrice, storeName, setOrder } = useOrderStore();
+  const { orderId, items, storeName, setOrder, calculateTotalPrice } = useOrderStore();
+  const totalPrice = calculateTotalPrice();
   const { speak, speaking } = useTextToSpeech();
 
   const [agentMessage, setAgentMessage] = useState("결제 방법을 선택해주세요.");
