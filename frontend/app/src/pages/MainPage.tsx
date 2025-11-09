@@ -17,7 +17,7 @@ const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage, conversationState, setConversationState } = useChatStore();
-  const { setOrder } = useOrderStore();
+  const { orderId, storeName, items, setOrder } = useOrderStore();
   
   const { speak, speaking } = useTextToSpeech();
   
@@ -39,8 +39,8 @@ const MainPage = () => {
     setAgentStatus('thinking');
 
     try {
-      const { orderId, storeName, items } = useOrderStore.getState();
-      const orderData = { orderId, storeName, items };
+      try {
+      const orderData = { orderId, storeName, items }; // Use the destructured state directly
       console.log('MainPage: orderData sent to backend:', orderData);
 
       const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/chat/', {
@@ -83,7 +83,7 @@ const MainPage = () => {
       addMessage({ sender: 'assistant', text: errorText });
       resetTranscript();
     }
-  }, [messages, addMessage, resetTranscript, conversationState, setConversationState, setOrder, navigate, speak]); // Added speak to dependency array
+  }, [messages, addMessage, resetTranscript, conversationState, setConversationState, setOrder, navigate, speak, orderId, storeName, items]); // Added speak to dependency array
 
   useEffect(() => {
     if (!listening && transcript && transcript !== processedTranscriptRef.current) {
