@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { shallow } from 'zustand/shallow';
+import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import { Container, Box, Grid, TextField, IconButton } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
@@ -19,14 +19,14 @@ const MainPage = () => {
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage } = useChatStore();
   const { orderId, storeName, items, setOrder, clearOrder, calculateTotalPrice } = useOrderStore(
-    (state: OrderState) => ({
+    useShallow((state: OrderState) => ({
       orderId: state.orderId,
       storeName: state.storeName,
       items: state.items,
       setOrder: state.setOrder,
       clearOrder: state.clearOrder,
       calculateTotalPrice: state.calculateTotalPrice,
-    }), shallow
+    }))
   );
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
