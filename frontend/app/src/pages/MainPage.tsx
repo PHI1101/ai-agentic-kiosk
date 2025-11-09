@@ -17,10 +17,8 @@ const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage, conversationState, setConversationState } = useChatStore();
-  const orderId = useOrderStore(state => state.orderId);
-  const storeName = useOrderStore(state => state.storeName);
-  const items = useOrderStore(state => state.items);
-  const setOrder = useOrderStore(state => state.setOrder);
+  const orderState = useOrderStore();
+  const { orderId, storeName, items, setOrder } = orderState;
   console.log('MainPage (top-level): orderId:', orderId, 'storeName:', storeName, 'items:', items);
   
   const { speak, speaking } = useTextToSpeech();
