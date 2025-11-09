@@ -15,7 +15,7 @@ export interface OrderStateSnapshot {
   status: string;
 }
 
-interface OrderState {
+export interface OrderState {
   orderId: number | null;
   storeName: string | null;
   items: OrderItem[];
