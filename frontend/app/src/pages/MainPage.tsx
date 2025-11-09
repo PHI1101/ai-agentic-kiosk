@@ -26,8 +26,7 @@ const MainPage = () => {
       setOrder: state.setOrder,
       clearOrder: state.clearOrder,
       calculateTotalPrice: state.calculateTotalPrice,
-    }),
-    shallow
+    }), shallow
   );
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
