@@ -1,4 +1,4 @@
-# Next Steps for VoiceOrder AI Kiosk Project
+# Next Steps for Orderpia AI Kiosk Project
 
 This document summarizes the work completed so far and outlines areas for future improvement and development.
 
