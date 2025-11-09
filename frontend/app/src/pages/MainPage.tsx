@@ -17,10 +17,8 @@ const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage, conversationState, setConversationState } = useChatStore();
-  const { orderId, storeName, items, setOrder, clearOrder, calculateTotalPrice } = useOrderStore();
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+  const { setOrder } = useOrderStore();
+  
   const { speak, speaking } = useTextToSpeech();
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
