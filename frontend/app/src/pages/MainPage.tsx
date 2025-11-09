@@ -18,14 +18,7 @@ const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage } = useChatStore();
-  const { orderId, storeName, items, setOrder } = useOrderStore(
-    useShallow((state: OrderState) => ({
-      orderId: state.orderId,
-      storeName: state.storeName,
-      items: state.items,
-      setOrder: state.setOrder,
-    }))
-  );
+  // No need to select state here, as we use getState() in callbacks
   const { speak, speaking } = useTextToSpeech();
   
   const [conversationState, setConversationState] = useState<any>({});
@@ -45,8 +38,10 @@ const MainPage = () => {
     if (!command) return;
 
     setAgentStatus('thinking');
-      try {
-      const orderData = { orderId, storeName, items }; // Use the destructured state directly
+    try {
+      // Get the latest state directly from the store to avoid stale state issues
+      const { orderId, storeName, items } = useOrderStore.getState();
+      const orderData = { orderId, storeName, items };
 
       const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/chat/', {
         message: command,
@@ -57,10 +52,9 @@ const MainPage = () => {
 
       const { reply, currentOrder, conversationState: newConversationState, action } = response.data;
 
-      console.log("✅ [MainPage] Received from backend:", { reply, currentOrder });
-
       if (currentOrder) {
-        setOrder(currentOrder);
+        // setOrder is the action from the store, it's safe to call
+        useOrderStore.getState().setOrder(currentOrder);
       }
 
       if (newConversationState) {
@@ -90,7 +84,7 @@ const MainPage = () => {
       addMessage({ sender: 'assistant', text: errorText });
       resetTranscript();
     }
-  }, [messages, addMessage, resetTranscript, conversationState, setConversationState, setOrder, navigate, speak, orderId, storeName, items]); // Added speak to dependency array
+  }, [messages, addMessage, resetTranscript, conversationState, navigate, speak]); // Simplified dependency array
 
   useEffect(() => {
     if (!listening && transcript && transcript !== processedTranscriptRef.current) {
