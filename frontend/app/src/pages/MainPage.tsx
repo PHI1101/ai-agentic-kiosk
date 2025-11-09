@@ -10,7 +10,7 @@ import OrderSummary from '../components/OrderSummary';
 import AiAgentAvatar, { AgentStatus } from '../components/AiAgentAvatar';
 import useVoiceRecognition from '../hooks/useVoiceRecognition';
 import { useChatStore } from '../store/chatStore';
-import { useOrderStore } from '../store/orderStore';
+import { useOrderStore, OrderState } from '../store/orderStore';
 import { useTextToSpeech } from '../hooks/useTextToSpeech'; // Import useTextToSpeech
 import axios from 'axios';
 
@@ -19,7 +19,7 @@ const MainPage = () => {
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage } = useChatStore();
   const { orderId, storeName, items, setOrder, clearOrder, calculateTotalPrice } = useOrderStore(
-    state => ({
+    (state: OrderState) => ({
       orderId: state.orderId,
       storeName: state.storeName,
       items: state.items,
