@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { shallow } from 'zustand/shallow';
 import { useNavigate } from 'react-router-dom';
 import { Container, Box, Grid, TextField, IconButton } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
@@ -17,12 +18,17 @@ const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage } = useChatStore();
-  const { orderId, storeName, items, setOrder } = useOrderStore();
-  console.log('MainPage (top-level): orderId:', orderId, 'storeName:', storeName, 'items:', items);
-  const { speak, speaking } = useTextToSpeech();
-  
-  const [conversationState, setConversationState] = useState<any>({});
-  
+  const { orderId, storeName, items, setOrder, clearOrder, calculateTotalPrice } = useOrderStore(
+    state => ({
+      orderId: state.orderId,
+      storeName: state.storeName,
+      items: state.items,
+      setOrder: state.setOrder,
+      clearOrder: state.clearOrder,
+      calculateTotalPrice: state.calculateTotalPrice,
+    }),
+    shallow
+  );
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
   const processedTranscriptRef = useRef<string | null>(null);
@@ -40,9 +46,7 @@ const MainPage = () => {
 
     setAgentStatus('thinking');
       try {
-      console.log('processUserCommand: orderId:', orderId, 'storeName:', storeName, 'items:', items);
       const orderData = { orderId, storeName, items }; // Use the destructured state directly
-      console.log('MainPage: orderData sent to backend:', orderData);
 
       const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/chat/', {
         message: command,
