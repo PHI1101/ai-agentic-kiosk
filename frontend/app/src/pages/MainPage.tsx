@@ -37,8 +37,6 @@ const MainPage = () => {
     if (!command) return;
 
     setAgentStatus('thinking');
-
-    try {
       try {
       const orderData = { orderId, storeName, items }; // Use the destructured state directly
       console.log('MainPage: orderData sent to backend:', orderData);
