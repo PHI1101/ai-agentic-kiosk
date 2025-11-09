@@ -57,6 +57,8 @@ const MainPage = () => {
 
       const { reply, currentOrder, conversationState: newConversationState, action } = response.data;
 
+      console.log("✅ [MainPage] Received from backend:", { reply, currentOrder });
+
       if (currentOrder) {
         setOrder(currentOrder);
       }

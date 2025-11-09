@@ -10,6 +10,8 @@ const OrderSummary = ({ onConfirmOrder }: OrderSummaryProps) => {
   const { items, storeName, clearOrder, calculateTotalPrice } = useOrderStore();
   const totalPrice = calculateTotalPrice();
 
+  console.log("🛒 [OrderSummary] Rendering with items:", items);
+
   return (
     <Paper elevation={3} sx={{ p: 2, mt: 2 }}>
       <Typography variant="h6" gutterBottom>
