@@ -49,6 +49,7 @@ const MainPage = () => {
       });
 
       const { reply, currentOrder, conversationState: newConversationState, action } = response.data;
+      console.log('MainPage: API Response currentOrder:', currentOrder);
 
       if (currentOrder) {
         setOrder(currentOrder);
