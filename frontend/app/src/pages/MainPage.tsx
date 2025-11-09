@@ -18,6 +18,7 @@ const MainPage = () => {
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage, conversationState, setConversationState } = useChatStore();
   const { orderId, storeName, items, setOrder } = useOrderStore();
+  console.log('MainPage (top-level): orderId:', orderId, 'storeName:', storeName, 'items:', items);
   
   const { speak, speaking } = useTextToSpeech();
   
@@ -38,6 +39,7 @@ const MainPage = () => {
 
     setAgentStatus('thinking');
       try {
+      console.log('processUserCommand: orderId:', orderId, 'storeName:', storeName, 'items:', items);
       const orderData = { orderId, storeName, items }; // Use the destructured state directly
       console.log('MainPage: orderData sent to backend:', orderData);
 
