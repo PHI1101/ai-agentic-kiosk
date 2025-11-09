@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import { useNavigate } from 'react-router-dom';
 import { Container, Box, Grid, TextField, IconButton } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
@@ -10,7 +9,7 @@ import OrderSummary from '../components/OrderSummary';
 import AiAgentAvatar, { AgentStatus } from '../components/AiAgentAvatar';
 import useVoiceRecognition from '../hooks/useVoiceRecognition';
 import { useChatStore } from '../store/chatStore';
-import { useOrderStore, OrderState } from '../store/orderStore';
+import { useOrderStore } from '../store/orderStore';
 import { useTextToSpeech } from '../hooks/useTextToSpeech'; // Import useTextToSpeech
 import axios from 'axios';
 
