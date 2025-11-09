@@ -201,7 +201,7 @@ class ChatWithAIView(APIView):
                     return Response({
                         'reply': "결제가 성공적으로 완료되었습니다. 주문해주셔서 감사합니다!",
                         'action': 'navigate_to_home',
-                        'currentOrder': {}, # Clear the order
+                        'currentOrder': {},
                         'conversationState': {}
                     })
 
@@ -209,15 +209,15 @@ class ChatWithAIView(APIView):
                 order_id = current_order_state.get('orderId')
                 if order_id:
                     order = Order.objects.get(id=order_id)
-                    order.status = 'pending' # Revert to pending
+                    order.status = 'pending'
                     order.save()
                     current_order_state['status'] = 'pending'
-                    conversation_state['awaiting_payment_confirmation'] = False # Reset
+                    conversation_state['awaiting_payment_confirmation'] = False
                     return Response({
                         'reply': "결제를 취소하고 주문 화면으로 돌아갑니다.",
                         'action': 'navigate_to_order',
                         'currentOrder': current_order_state,
-                        'conversationState': conversation_state # Pass updated conversationState
+                        'conversationState': conversation_state
                     })
 
             if intent == 'find_stores_by_category':
@@ -251,20 +251,13 @@ class ChatWithAIView(APIView):
                 "너는 AI 키오스크 '보이스오더'의 친절한 안내원이야. 너의 목표는 사용자가 DB에 있는 메뉴를 주문하고 결제하도록 돕는 거야."
                 "1. **DB 검색 결과 활용:** 사용자가 메뉴, 가게, 추천을 물어보면, 반드시 'DB 검색 결과' 섹션에 제공된 정보만을 사용해서 답변해야 해. 없는 것은 절대 제안해서는 안 돼."
                 "2. **주문 실행 (장바구니 추가):** 사용자가 특정 메뉴 주문을 요청하면, 반드시 다음 JSON 형식에 맞춰 응답해야 해. JSON 블록은 대화의 가장 마지막에 와야 해."
-                '```json
-'
-                '{
-'
-                '  "action": "add_to_cart",
-'
-                '  "item_name": "메뉴이름",
-'
-                '  "store_name": "가게이름"
-'
-                '}
-'
-                '```
-'
+                '''```json
+{
+  "action": "add_to_cart",
+  "item_name": "메뉴이름",
+  "store_name": "가게이름"
+}
+```'''
                 "   - `item_name`과 `store_name`에는 'DB 검색 결과'에 명시된 정확한 전체 이름을 사용해야 해. 사용자가 모호하게 말하면, 명확한 메뉴를 다시 물어봐줘."
                 "   - 이 액션 외의 다른 말은 절대로 JSON에 넣지 마."
                 "3. **결제 안내:** 사용자가 '카드 결제', 'QR 결제' 등 결제 방식을 말하면, 그에 맞는 안내 메시지를 생성해줘. 예를 들어 '카드로 결제할게요'라고 하면 '네, 카드 결제를 진행합니다. 잠시만 기다려주세요.' 와 같이 답변해. 이 때는 JSON을 생성하면 안 돼."
@@ -340,7 +333,7 @@ class ChatWithAIView(APIView):
                             final_reply = "죄송합니다. 주문하시려는 메뉴와 가게 이름을 정확히 말씀해주세요."
                     else:
                         # If it's some other JSON action, just use the text part of the AI response
-                        final_reply = re.sub(r'```json\n?(\{.*?\})\n?```', '', ai_response_text, flags=re.DOTALL).strip()
+                        final_reply = re.sub(r'```json.*?```', '', ai_response_text, flags=re.DOTALL).strip()
 
                 # Step 4: If no JSON was found or parsed, just use the text response.
                 else:
@@ -349,7 +342,7 @@ class ChatWithAIView(APIView):
             except (json.JSONDecodeError, AttributeError):
                 # If anything goes wrong, fall back to a safe state.
                 # Clean up the AI response to avoid sending garbage to the user.
-                final_reply = re.sub(r'```json\n?(\{.*?\})\n?```', '', ai_response_text, flags=re.DOTALL).strip()
+                final_reply = re.sub(r'```json.*?```', '', ai_response_text, flags=re.DOTALL).strip()
                 if not final_reply:
                     final_reply = "죄송합니다. 다시 한번 말씀해 주시겠어요?"
             
