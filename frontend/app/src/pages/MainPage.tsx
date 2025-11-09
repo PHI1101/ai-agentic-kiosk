@@ -28,6 +28,7 @@ const MainPage = () => {
       calculateTotalPrice: state.calculateTotalPrice,
     }))
   );
+  const { speak, speaking } = useTextToSpeech();
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
   const processedTranscriptRef = useRef<string | null>(null);
