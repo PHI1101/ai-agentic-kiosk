@@ -29,6 +29,8 @@ const MainPage = () => {
     }))
   );
   const { speak, speaking } = useTextToSpeech();
+  
+  const [conversationState, setConversationState] = useState<any>({});
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
   const processedTranscriptRef = useRef<string | null>(null);
