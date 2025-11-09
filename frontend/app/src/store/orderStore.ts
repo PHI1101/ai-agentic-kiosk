@@ -31,14 +31,12 @@ export const useOrderStore = create<OrderState>((set, get) => ({
   storeName: null,
   items: [],
   setOrder: (order) => {
-    console.log('OrderStore: setOrder called with:', order);
     if (!order || Object.keys(order).length === 0) {
       set({
         orderId: null,
         storeName: null,
         items: [],
       });
-      console.log('OrderStore: setOrder cleared state.');
     } else {
       const typedOrder = order as OrderStateSnapshot;
       set({
@@ -46,7 +44,6 @@ export const useOrderStore = create<OrderState>((set, get) => ({
         storeName: typedOrder.storeName,
         items: typedOrder.items,
       });
-      console.log('OrderStore: setOrder updated state to:', typedOrder);
     }
   },
   addItem: (item) =>

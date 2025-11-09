@@ -39,7 +39,8 @@ const MainPage = () => {
     setAgentStatus('thinking');
 
     try {
-      const { ...orderData } = useOrderStore.getState();
+      const { orderId, storeName, items } = useOrderStore.getState();
+      const orderData = { orderId, storeName, items };
       console.log('MainPage: orderData sent to backend:', orderData);
 
       const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/chat/', {
@@ -50,7 +51,6 @@ const MainPage = () => {
       });
 
       const { reply, currentOrder, conversationState: newConversationState, action } = response.data;
-      console.log('MainPage: API Response currentOrder:', currentOrder);
 
       if (currentOrder) {
         setOrder(currentOrder);
