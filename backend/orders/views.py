@@ -250,16 +250,23 @@ class ChatWithAIView(APIView):
             system_prompt = (
                 "너는 AI 키오스크 '보이스오더'의 친절한 안내원이야. 너의 목표는 사용자가 DB에 있는 메뉴를 주문하고 결제하도록 돕는 거야."
                 "1. **DB 검색 결과 활용:** 사용자가 메뉴, 가게, 추천을 물어보면, 반드시 'DB 검색 결과' 섹션에 제공된 정보만을 사용해서 답변해야 해. 없는 것은 절대 제안해서는 안 돼."
-                "2. **주문 실행 (장바구니 추가):** 사용자가 특정 메뉴 주문을 요청하거나, '주문할게', '네' 등으로 주문을 확정하면, 반드시 다음 JSON 형식에 맞춰 응답해야 해. JSON 블록은 대화의 가장 마지막에 와야 해."
-                '```json\n'
-                '{\n'
-                '  "action": "add_to_cart",\n'
-                '  "item_name": "메뉴이름",\n'
-                '  "store_name": "가게이름",\n'
-                '  "reply": "장바구니에 추가했습니다. 추가로 필요하신 거 있으세요?"\n'
-                '}\n'
-                '```\n'
+                "2. **주문 실행 (장바구니 추가):** 사용자가 특정 메뉴 주문을 요청하면, 반드시 다음 JSON 형식에 맞춰 응답해야 해. JSON 블록은 대화의 가장 마지막에 와야 해."
+                '```json
+'
+                '{
+'
+                '  "action": "add_to_cart",
+'
+                '  "item_name": "메뉴이름",
+'
+                '  "store_name": "가게이름"
+'
+                '}
+'
+                '```
+'
                 "   - `item_name`과 `store_name`에는 'DB 검색 결과'에 명시된 정확한 전체 이름을 사용해야 해. 사용자가 모호하게 말하면, 명확한 메뉴를 다시 물어봐줘."
+                "   - 이 액션 외의 다른 말은 절대로 JSON에 넣지 마."
                 "3. **결제 안내:** 사용자가 '카드 결제', 'QR 결제' 등 결제 방식을 말하면, 그에 맞는 안내 메시지를 생성해줘. 예를 들어 '카드로 결제할게요'라고 하면 '네, 카드 결제를 진행합니다. 잠시만 기다려주세요.' 와 같이 답변해. 이 때는 JSON을 생성하면 안 돼."
                 "4. **일반 대화:** 주문과 관련 없는 일반 대화나, JSON 행동이 필요 없는 경우에는 JSON 블록 없이 자유롭게 답변해."
                 "5. **금지된 행동:** '결제할게', '주문 완료' 같은 말에는 직접 반응하지 마. 백엔드가 이 말을 먼저 처리해서 결제 페이지로 안내할 거야. 또한 '결제 성공', '결제 취소' 같은 시스템 용어에도 반응하지 마."
@@ -297,68 +304,64 @@ class ChatWithAIView(APIView):
             response = openai.chat.completions.create(model="gpt-3.5-turbo", messages=conversation_history)
             ai_response_text = response.choices[0].message.content
 
+            # --- Robust AI Response Processing ---
             final_reply = ai_response_text
             updated_order = current_order_state
             action_data = None
 
-            json_match = re.search(r'```json\n({.*?})\n```', ai_response_text, re.DOTALL)
-            if json_match:
-                action_json_str = json_match.group(1)
-                try:
-                    action_data = json.loads(action_json_str)
-                    final_reply = action_data.get('reply', "주문이 처리되었습니다.")
+            try:
+                # Step 1: Find JSON in the AI response, with or without markdown.
+                json_str = None
+                json_match_markdown = re.search(r'```json\n({.*?})\n```', ai_response_text, re.DOTALL)
+                if json_match_markdown:
+                    json_str = json_match_markdown.group(1)
+                else:
+                    # If no markdown, find the first valid JSON object in the text
+                    json_match_raw = re.search(r'\{.*\}', ai_response_text, re.DOTALL)
+                    if json_match_raw:
+                        json_str = json_match_raw.group(0)
+
+                # Step 2: If JSON is found, try to parse it and act on it.
+                if json_str:
+                    action_data = json.loads(json_str)
+                    
+                    # Step 3: Handle 'add_to_cart' action
                     if action_data.get('action') == 'add_to_cart':
                         item_name = action_data.get('item_name')
                         store_name = action_data.get('store_name')
+                        
                         if item_name and store_name:
                             new_order_state, message = _update_order(item_name, store_name, current_order_state)
                             final_reply = message  # Always use the message from the helper
                             if new_order_state:
                                 updated_order = new_order_state
-                            else:
-                                # On failure, keep the original order state
-                                updated_order = current_order_state
+                            # If new_order_state is None (error), keep the original order state
                         else:
-                            final_reply = "죄송합니다. 메뉴 이름과 가게 이름이 모두 필요합니다."
-                            updated_order = current_order_state
-                except json.JSONDecodeError:
-                    # If JSON parsing fails, just use the raw AI response
+                            final_reply = "죄송합니다. 주문하시려는 메뉴와 가게 이름을 정확히 말씀해주세요."
+                    else:
+                        # If it's some other JSON action, just use the text part of the AI response
+                        final_reply = re.sub(r'```json\n?(\{.*?\})\n?```', '', ai_response_text, flags=re.DOTALL).strip()
+
+                # Step 4: If no JSON was found or parsed, just use the text response.
+                else:
                     final_reply = ai_response_text
 
-            # AI의 응답이 '추가로 필요하신 거 있으세요?'에 대한 '아니요' 처리인 경우
-            if user_message.lower().strip() == '아니요' and conversation_state.get('last_ai_question') == '추가로 필요하신 거 있으세요?':
-                # 이 경우, simple_nlu에서 finalize_order 인텐트로 이미 처리되었을 것이므로,
-                # 여기서는 OpenAI의 응답을 무시하고 백엔드 로직이 우선하도록 합니다.
-                # 하지만 OpenAI가 '결제 페이지로 이동합니다...'와 같은 응답을 생성하도록 유도했으므로,
-                # 그 응답을 사용하고 action을 추가합니다.
-                final_reply = ai_response_text # OpenAI가 생성한 결제 안내 메시지
-                if current_order_state.get('orderId') and current_order_state.get('items'):
-                    try:
-                        order = Order.objects.get(id=current_order_state['orderId'])
-                        order.status = 'awaiting_payment'
-                        order.save()
-                        current_order_state['status'] = 'awaiting_payment'
-                        conversation_state['awaiting_payment_confirmation'] = True # Set this when navigating to payment
-                        return Response({
-                            'reply': final_reply,
-                            'action': 'navigate_to_payment',
-                            'currentOrder': current_order_state,
-                            'conversationState': conversation_state
-                        })
-                    except Order.DoesNotExist:
-                        pass # 오류 처리
+            except (json.JSONDecodeError, AttributeError):
+                # If anything goes wrong, fall back to a safe state.
+                # Clean up the AI response to avoid sending garbage to the user.
+                final_reply = re.sub(r'```json\n?(\{.*?\})\n?```', '', ai_response_text, flags=re.DOTALL).strip()
+                if not final_reply:
+                    final_reply = "죄송합니다. 다시 한번 말씀해 주시겠어요?"
             
+            # --- Post-processing and final response ---
+
             # Check if the AI's reply is a payment instruction and set awaiting_payment_confirmation
-            if "카드 결제를 진행합니다. 잠시만 기다려주세요." in final_reply or \
-               "QR 결제를 진행합니다. 잠시만 기다려주세요." in final_reply: # Assuming QR payment instruction might also exist
+            if "카드 결제를 진행합니다" in final_reply or "QR 결제를 진행합니다" in final_reply:
                 conversation_state['awaiting_payment_confirmation'] = True
             else:
-                # If not a payment instruction, ensure awaiting_payment_confirmation is false
                 conversation_state['awaiting_payment_confirmation'] = False
 
-            # OpenAI의 응답이 JSON이 아니면서, '추가로 필요하신 거 있으세요?'에 대한 '아니요'가 아닌 경우
-            # 또는 OpenAI가 결제 안내 메시지를 생성한 경우 (simple_nlu에서 finalize_order로 처리되지 않은 경우)
-            # conversation_state에 마지막 AI 질문 저장
+            # Save the last question for context
             conversation_state['last_ai_question'] = final_reply if final_reply.endswith('?') else None
 
             return Response({
