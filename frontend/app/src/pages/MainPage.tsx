@@ -17,7 +17,7 @@ const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage } = useChatStore();
-  const { orderId, storeName, items, setOrder, clearOrder, calculateTotalPrice } = useOrderStore();
+  const { orderId, storeName, items, setOrder } = useOrderStore();
   const { speak, speaking } = useTextToSpeech();
   
   const [conversationState, setConversationState] = useState<any>({});
