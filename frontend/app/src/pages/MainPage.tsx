@@ -16,12 +16,11 @@ import axios from 'axios';
 const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
-  const { messages, addMessage, conversationState, setConversationState } = useChatStore();
-  const orderState = useOrderStore();
-  const { orderId, storeName, items, setOrder } = orderState;
-  console.log('MainPage (top-level): orderId:', orderId, 'storeName:', storeName, 'items:', items);
-  
+  const { messages, addMessage } = useChatStore();
+  const { orderId, storeName, items, setOrder, clearOrder, calculateTotalPrice } = useOrderStore();
   const { speak, speaking } = useTextToSpeech();
+  
+  const [conversationState, setConversationState] = useState<any>({});
   
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
@@ -40,9 +39,7 @@ const MainPage = () => {
 
     setAgentStatus('thinking');
       try {
-      console.log('processUserCommand: orderId:', orderId, 'storeName:', storeName, 'items:', items);
       const orderData = { orderId, storeName, items }; // Use the destructured state directly
-      console.log('MainPage: orderData sent to backend:', orderData);
 
       const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/chat/', {
         message: command,
