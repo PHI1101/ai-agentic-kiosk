@@ -311,15 +311,19 @@ class ChatWithAIView(APIView):
                         item_name = action_data.get('item_name')
                         store_name = action_data.get('store_name')
                         if item_name and store_name:
-                            updated_order, error_message = _update_order(item_name, store_name, current_order_state)
-                            if not updated_order:
-                                final_reply = error_message
+                            new_order_state, message = _update_order(item_name, store_name, current_order_state)
+                            final_reply = message  # Always use the message from the helper
+                            if new_order_state:
+                                updated_order = new_order_state
+                            else:
+                                # On failure, keep the original order state
                                 updated_order = current_order_state
                         else:
                             final_reply = "죄송합니다. 메뉴 이름과 가게 이름이 모두 필요합니다."
                             updated_order = current_order_state
                 except json.JSONDecodeError:
-                    pass
+                    # If JSON parsing fails, just use the raw AI response
+                    final_reply = ai_response_text
 
             # AI의 응답이 '추가로 필요하신 거 있으세요?'에 대한 '아니요' 처리인 경우
             if user_message.lower().strip() == '아니요' and conversation_state.get('last_ai_question') == '추가로 필요하신 거 있으세요?':
