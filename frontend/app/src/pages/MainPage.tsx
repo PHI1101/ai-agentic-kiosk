@@ -18,14 +18,12 @@ const MainPage = () => {
   const navigate = useNavigate();
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage } = useChatStore();
-  const { orderId, storeName, items, setOrder, clearOrder, calculateTotalPrice } = useOrderStore(
+  const { orderId, storeName, items, setOrder } = useOrderStore(
     useShallow((state: OrderState) => ({
       orderId: state.orderId,
       storeName: state.storeName,
       items: state.items,
       setOrder: state.setOrder,
-      clearOrder: state.clearOrder,
-      calculateTotalPrice: state.calculateTotalPrice,
     }))
   );
   const { speak, speaking } = useTextToSpeech();
