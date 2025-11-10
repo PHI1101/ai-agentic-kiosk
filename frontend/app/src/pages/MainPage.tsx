@@ -82,6 +82,41 @@ const MainPage = () => {
     }
   }, [messages, addMessage, resetTranscript, conversationState, navigate, speak]);
 
+  // This effect is responsible for processing the transcript after a pause in speech.
+  useEffect(() => {
+    if (transcript && !speaking) {
+      // Clear any existing timeout to reset the pause detection.
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+
+      // Set a new timeout to process the command after a pause.
+      speechTimeoutRef.current = setTimeout(() => {
+        // Check if the transcript has already been processed to avoid duplicates.
+        if (transcript !== processedTranscriptRef.current) {
+          console.log(`[Silence Detection] User paused. Processing command: "${transcript}"`);
+          
+          // Mark the transcript as processed.
+          processedTranscriptRef.current = transcript;
+          
+          // Stop listening to finalize the current speech input.
+          stopListening();
+          
+          // Add the user's message to the chat and send it to the backend.
+          addMessage({ sender: 'user', text: transcript });
+          processUserCommand(transcript);
+        }
+      }, SPEECH_PAUSE_THRESHOLD_MS);
+    }
+
+    // Cleanup function to clear the timeout when the component unmounts or dependencies change.
+    return () => {
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+    };
+  }, [transcript, speaking, stopListening, addMessage, processUserCommand]);
+
   // Original useEffect for processing transcript (Problem 1) - now simplified
   useEffect(() => {
     if (!listening && !transcript && processedTranscriptRef.current) {
@@ -112,6 +147,13 @@ const MainPage = () => {
   const handleConfirmOrder = useCallback(() => {
     processUserCommand("결제할게요");
   }, [processUserCommand]);
+
+  // Update input field with transcript
+  useEffect(() => {
+    if (transcript) {
+      setInputValue(transcript);
+    }
+  }, [transcript]);
 
   // This effect manages the interplay between speaking and listening.
   useEffect(() => {
