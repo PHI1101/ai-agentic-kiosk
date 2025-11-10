@@ -15,6 +15,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/order" element={<MainPage />} />
+          <Route path="/main" element={<MainPage />} /> {/* /main 경로 추가 */}
           <Route path="/payment" element={<PaymentPage />} />
         </Routes>
       </Router>
