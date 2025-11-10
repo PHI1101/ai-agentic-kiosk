@@ -108,6 +108,7 @@ const MainPage = () => {
           // Add the user's message to the chat and send it to the backend.
           addMessage({ sender: 'user', text: transcript });
           processUserCommand(transcript);
+          setInputValue(''); // Clear the input field after processing voice command
         }
       }, SPEECH_PAUSE_THRESHOLD_MS);
     }
