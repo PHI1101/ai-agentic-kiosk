@@ -162,7 +162,7 @@ const MainPage = () => {
       userManuallyStoppedListeningRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Runs only once on mount.
+  }, [messages, speak]); // messages와 speak를 의존성 배열에 추가
 
   // 컴포넌트 마운트 시 inputValue 초기화
   useEffect(() => {
