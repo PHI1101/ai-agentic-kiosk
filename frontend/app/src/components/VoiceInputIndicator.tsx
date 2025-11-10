@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Modal } from '@mui/material';
+import { Box, Modal, IconButton } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
+import StopCircleIcon from '@mui/icons-material/StopCircle';
 import { keyframes } from '@emotion/react';
 
 // Define the blinking animation
@@ -12,9 +13,10 @@ const blink = keyframes`
 
 interface VoiceInputIndicatorProps {
   listening: boolean;
+  onStop: () => void;
 }
 
-const VoiceInputIndicator: React.FC<VoiceInputIndicatorProps> = ({ listening }) => {
+const VoiceInputIndicator: React.FC<VoiceInputIndicatorProps> = ({ listening, onStop }) => {
   return (
     <Modal
       open={listening}
@@ -28,17 +30,32 @@ const VoiceInputIndicator: React.FC<VoiceInputIndicatorProps> = ({ listening }) 
     >
       <Box
         sx={{
+          position: 'relative',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: 150,
-          height: 150,
+          width: 200,
+          height: 200,
           borderRadius: '50%',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          animation: `${blink} 1s infinite`,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          animation: `${blink} 1.2s infinite ease-in-out`,
         }}
       >
-        <MicIcon sx={{ color: 'white', fontSize: 80 }} />
+        <MicIcon sx={{ color: 'white', fontSize: 100 }} />
+        <IconButton
+          onClick={onStop}
+          sx={{
+            position: 'absolute',
+            bottom: 10,
+            color: 'white',
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+            },
+          }}
+        >
+          <StopCircleIcon sx={{ fontSize: 40 }} />
+        </IconButton>
       </Box>
     </Modal>
   );

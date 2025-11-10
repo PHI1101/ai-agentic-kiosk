@@ -189,7 +189,7 @@ const MainPage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <VoiceInputIndicator listening={listening} />
+      <VoiceInputIndicator listening={listening} onStop={handleToggleListening} />
       <Grid container spacing={3}>
         <Grid item xs={12} md={7}>
           <Box sx={{ mb: 2, textAlign: 'center' }}>
