@@ -63,14 +63,20 @@ const HomePage = () => {
     if (transcript.includes('주문 시작')) {
       stopListening();
       resetTranscript();
-      navigate('/main');
+      // 딜레이를 주어 resetTranscript가 완전히 적용될 시간을 줍니다.
+      setTimeout(() => {
+        navigate('/main');
+      }, 100); // 100ms 딜레이
     }
   }, [transcript, navigate, resetTranscript, stopListening]);
 
   const handleOrderStart = () => {
     stopListening();
     resetTranscript();
-    navigate('/main');
+    // 딜레이를 주어 resetTranscript가 완전히 적용될 시간을 줍니다.
+    setTimeout(() => {
+      navigate('/main');
+    }, 100); // 100ms 딜레이
   };
 
   return (
