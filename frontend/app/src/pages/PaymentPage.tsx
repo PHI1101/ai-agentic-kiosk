@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Button, Paper, Container, Grid, CircularProgress, Divider } from '@mui/material';
 import { useOrderStore, OrderItem as OrderItemType } from '../store/orderStore';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
+import useVoiceRecognition from '../hooks/useVoiceRecognition'; // 음성 인식 훅 추가
 import axios from 'axios';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
@@ -13,15 +14,26 @@ const PaymentPage = () => {
   const { orderId, items, storeName, setOrder, calculateTotalPrice } = useOrderStore();
   const totalPrice = calculateTotalPrice();
   const { speak, speaking } = useTextToSpeech();
+  const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition(); // 음성 인식 훅 사용
 
   const [agentMessage, setAgentMessage] = useState("결제 방법을 선택해주세요.");
-  const [agentStatus, setAgentStatus] = useState<AgentStatus>('speaking');
+  const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [paymentStatus, setPaymentStatus] = useState<'selecting' | 'processing' | 'success' | 'failed'>('selecting');
 
-  // 페이지 로드 시 첫 안내 메시지 음성 출력
+  // 페이지 로드 시 주문 내역과 결제 방법 질문을 음성으로 안내
   useEffect(() => {
-    speak(agentMessage);
-  }, [agentMessage, speak]);
+    const itemsSummary = items.map(item => `${item.name} ${item.quantity}개`).join(', ');
+    const initialGreeting = `주문 내역은 ${storeName}에서 ${itemsSummary}, 총 결제 금액은 ${totalPrice.toLocaleString()}원입니다. 결제는 카드 결제, QR 결제 중에 어떤 것으로 하시겠습니까?`;
+    
+    setAgentMessage(initialGreeting);
+    speak(initialGreeting);
+    
+    return () => {
+      stopListening();
+      window.speechSynthesis.cancel();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 페이지 최초 로드 시 한 번만 실행
 
   // AI 에이전트와 통신하는 함수
   const sendPaymentCommand = useCallback(async (command: string) => {
@@ -31,67 +43,82 @@ const PaymentPage = () => {
       const response = await axios.post('https://ai-agentic-kiosk-production.up.railway.app/api/orders/chat/', {
         message: command,
         currentState: orderData,
-        history: [{ sender: 'user', text: command }] // 간단한 history 제공
+        history: [{ sender: 'user', text: command }]
       });
 
       const { reply, action, currentOrder } = response.data;
 
       setAgentMessage(reply);
-      setAgentStatus('speaking');
       speak(reply);
 
       if (action === 'navigate_to_home') {
         setPaymentStatus('success');
         setTimeout(() => {
-          setOrder({}); // 주문 정보 초기화
+          setOrder({});
           navigate('/');
         }, 4000);
       } else if (action === 'navigate_to_order') {
         navigate('/order');
-      } else {
-         // In case the order state is updated (e.g. status change)
-        if (currentOrder) {
-          setOrder(currentOrder);
-        }
+      } else if (currentOrder) {
+        setOrder(currentOrder);
       }
     } catch (error) {
       const errorMsg = "결제 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       setAgentMessage(errorMsg);
-      setAgentStatus('idle');
       speak(errorMsg);
       setPaymentStatus('failed');
     }
   }, [navigate, setOrder, speak]);
 
   // 결제 방법 선택 핸들러
-  const handlePaymentMethodSelect = (method: 'card' | 'qr') => {
+  const handlePaymentMethodSelect = useCallback((method: 'card' | 'qr') => {
     if (paymentStatus !== 'selecting') return;
 
     const command = method === 'card' ? '카드로 결제할게요' : 'QR코드로 결제할게요';
     sendPaymentCommand(command);
     setPaymentStatus('processing');
 
-    // 결제 시뮬레이션
     setTimeout(() => {
-      // 실제 결제 연동이 성공했다고 가정
       sendPaymentCommand('결제 성공');
-    }, 5000); // 5초 후 결제 성공
-  };
+    }, 5000);
+  }, [paymentStatus, sendPaymentCommand]);
+
+  // 음성 명령으로 결제 방법 선택
+  useEffect(() => {
+    if (transcript && !listening) {
+      if (transcript.includes('카드')) {
+        handlePaymentMethodSelect('card');
+        resetTranscript();
+      } else if (transcript.includes('큐알') || transcript.toLowerCase().includes('qr')) {
+        handlePaymentMethodSelect('qr');
+        resetTranscript();
+      }
+    }
+  }, [transcript, listening, handlePaymentMethodSelect, resetTranscript]);
 
   // 결제 취소 핸들러
   const handleCancelPayment = () => {
     sendPaymentCommand('결제 취소');
   };
 
+  // 음성 입출력 및 에이전트 상태 관리
   useEffect(() => {
     if (speaking) {
       setAgentStatus('speaking');
-    } else if (paymentStatus === 'processing') {
-      setAgentStatus('thinking');
+      if (listening) stopListening();
     } else {
-      setAgentStatus('idle');
+      if (paymentStatus === 'selecting' && !listening) {
+        startListening();
+      }
+      if (listening) {
+        setAgentStatus('listening');
+      } else if (paymentStatus === 'processing') {
+        setAgentStatus('thinking');
+      } else {
+        setAgentStatus('idle');
+      }
     }
-  }, [speaking, paymentStatus]);
+  }, [speaking, listening, paymentStatus, startListening, stopListening]);
 
 
   if (!orderId) {
