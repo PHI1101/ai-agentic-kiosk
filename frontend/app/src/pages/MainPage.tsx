@@ -177,7 +177,7 @@ const MainPage = () => {
     }
     // We only want this to run when `speaking` changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [speaking]);
+  }, [speaking, startListening, stopListening]);
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
