@@ -72,6 +72,7 @@ const MainPage = () => {
       }
 
       resetTranscript();
+      setInputValue(''); // Clear the input field after processing voice command
 
     } catch (error) {
       console.error("Error sending command to backend:", error);
