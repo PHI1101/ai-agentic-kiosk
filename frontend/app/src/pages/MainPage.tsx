@@ -26,7 +26,6 @@ const MainPage = () => {
   const processedTranscriptRef = useRef<string | null>(null);
   const wasListeningBeforeTTS = useRef(false);
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null); // For silence detection
-  const sttWasActiveBeforeSpeakRef = useRef(false); // New ref to capture listening state before speak()
   const SPEECH_PAUSE_THRESHOLD_MS = 1500; // 1.5 seconds of silence to consider speech ended
 
   // Start listening on component mount for accessibility
@@ -38,7 +37,8 @@ const MainPage = () => {
 
   // Effect to handle STT <> TTS interaction
   useEffect(() => {
-    console.log(`[STT/TTS Effect] speaking: ${speaking}, listening: ${listening}, wasListeningBeforeTTS.current: ${wasListeningBeforeTTS.current}, sttWasActiveBeforeSpeakRef.current: ${sttWasActiveBeforeSpeakRef.current}`);
+    console.log(`[STT/TTS Effect] speaking: ${speaking}, listening: ${listening}, wasListeningBeforeTTS.current: ${wasListeningBeforeTTS.current}`);
+
     // When TTS starts speaking
     if (speaking) {
       // Clear any speech timeout if TTS starts
@@ -47,29 +47,21 @@ const MainPage = () => {
         speechTimeoutRef.current = null;
       }
 
-      // If STT was active before speak() was called, mark for reactivation
-      if (sttWasActiveBeforeSpeakRef.current) {
-        wasListeningBeforeTTS.current = true;
-        // If STT is still listening, stop it
-        if (listening) {
-          console.log("[STT/TTS Effect] TTS started, STT was listening. Stopping STT.");
-          stopListening();
-        }
-      } else {
-        wasListeningBeforeTTS.current = false;
+      // If STT was listening when speak() was called, and it's still listening, stop it.
+      // wasListeningBeforeTTS.current is set in processUserCommand before speak()
+      if (wasListeningBeforeTTS.current && listening) {
+        console.log("[STT/TTS Effect] TTS started, STT was listening. Stopping STT.");
+        stopListening();
       }
     }
     // When TTS stops speaking
     else {
-      // If STT was on before TTS started
+      // If STT was listening before TTS started (and was stopped by TTS), reactivate it.
       if (wasListeningBeforeTTS.current) {
         console.log("[STT/TTS Effect] TTS finished, STT was listening before. Restarting STT.");
-        // Restart STT and reset the flag
         startListening();
-        wasListeningBeforeTTS.current = false;
+        wasListeningBeforeTTS.current = false; // Reset the flag
       }
-      // Reset this ref after TTS finishes
-      sttWasActiveBeforeSpeakRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speaking]);
@@ -114,7 +106,7 @@ const MainPage = () => {
     setAgentStatus('thinking');
     try {
       // Capture listening state before speak() is called
-      sttWasActiveBeforeSpeakRef.current = listening; // <--- Set here
+      wasListeningBeforeTTS.current = listening; // <--- Set here
 
       // Get the latest state directly from the store to avoid stale state issues
       const { orderId, storeName, items } = useOrderStore.getState();
