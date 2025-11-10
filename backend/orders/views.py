@@ -110,14 +110,18 @@ def simple_nlu(text, conversation_state=None):
 
     # --- Entity Extraction ---
     all_stores = list(Store.objects.values_list('name', flat=True))
-    food_categories = ['버거', '커피', '김밥', '마라', '분식', '토스트', '음료', '베이거리', '샌드위치', '과일']
+    
+    # Check for '버거' or '햄버거' specifically
+    if '버거' in text or '햄버거' in text:
+        intent['entities']['category'] = '버거'
     
     for store in all_stores:
         if store.lower() in text:
             intent['entities']['store_name'] = store
             break
     
-    for category in food_categories:
+    # General category check (after specific ones, exclude '버거' as it's handled above)
+    for category in ['커피', '김밥', '마라', '분식', '토스트', '음료', '베이거리', '샌드위치', '과일']:
         if category in text:
             intent['entities']['category'] = category
             break
