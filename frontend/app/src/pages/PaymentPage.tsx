@@ -8,6 +8,7 @@ import axios from 'axios';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import AiAgentAvatar, { AgentStatus } from '../components/AiAgentAvatar';
+import VoiceInputIndicator from '../components/VoiceInputIndicator'; // VoiceInputIndicator import
 
 const PaymentPage = () => {
   const navigate = useNavigate();
@@ -133,6 +134,7 @@ const PaymentPage = () => {
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
+      <VoiceInputIndicator listening={listening} onStop={stopListening} />
       <Paper elevation={3} sx={{ p: 4, borderRadius: 4 }}>
         <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>
           결제하기
