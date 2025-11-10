@@ -31,15 +31,7 @@ const PaymentPage = () => {
     setAgentMessage(initialGreeting);
     speak(initialGreeting);
     
-    // TTS가 끝난 후 음성 인식을 시작하도록 타이머 설정
-    const speechEndTimeout = setTimeout(() => {
-      if (paymentStatus === 'selecting' && !listening) {
-        startListening();
-      }
-    }, 500); // TTS 시작 후 0.5초 뒤에 음성 인식 시작 시도
-
     return () => {
-      clearTimeout(speechEndTimeout);
       stopListening();
       window.speechSynthesis.cancel();
     };
@@ -141,9 +133,12 @@ const PaymentPage = () => {
       setAgentStatus('speaking');
       if (listening) stopListening();
     } else {
-      // AI가 말을 멈췄을 때
+      // AI가 말을 멈췄을 때, 결제 선택 중이고 듣고 있지 않다면 음성 인식 시작
       if (paymentStatus === 'selecting' && !listening) {
-        startListening();
+        const timer = setTimeout(() => {
+          startListening();
+        }, 500); // TTS 종료 후 0.5초 딜레이
+        return () => clearTimeout(timer);
       }
 
       // 현재 상태에 따라 에이전트 상태를 설정
