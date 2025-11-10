@@ -18,7 +18,7 @@ const MainPage = () => {
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage } = useChatStore();
   // No need to select state here, as we use getState() in callbacks
-  const { speak, speaking } = useTextToSpeech();
+  const { speak, speaking } = useTextToSpeech(); // Import useTextToSpeech
   
   const [conversationState, setConversationState] = useState<any>({});
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
@@ -28,91 +28,6 @@ const MainPage = () => {
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null); // For silence detection
   const userManuallyStoppedListeningRef = useRef(false); // New ref to track manual stop
   const SPEECH_PAUSE_THRESHOLD_MS = 1500; // 1.5 seconds of silence to consider speech ended
-
-  // Start listening on component mount for accessibility
-  useEffect(() => {
-    console.log("[MainPage Mount] Calling startListening()");
-    startListening();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Effect to handle STT <> TTS interaction
-  useEffect(() => {
-    console.log(`[STT/TTS Effect] speaking: ${speaking}, listening: ${listening}, wasListeningBeforeTTS.current: ${wasListeningBeforeTTS.current}, userManuallyStoppedListeningRef.current: ${userManuallyStoppedListeningRef.current}`);
-
-    // When TTS starts speaking
-    if (speaking) {
-      // Clear any speech timeout if TTS starts
-      if (speechTimeoutRef.current) {
-        clearTimeout(speechTimeoutRef.current);
-        speechTimeoutRef.current = null;
-      }
-
-      // If STT is currently listening AND user has not manually stopped it,
-      // then mark for reactivation and stop STT.
-      if (listening && !userManuallyStoppedListeningRef.current) {
-        console.log("[STT/TTS Effect] TTS started, STT was listening. Stopping STT.");
-        wasListeningBeforeTTS.current = true;
-        stopListening();
-      } else {
-        // If STT was not listening, or user manually stopped it, don't reactivate automatically.
-        wasListeningBeforeTTS.current = false;
-      }
-    }
-    // When TTS stops speaking
-    else {
-      // If STT was marked for reactivation AND user has not manually stopped it, reactivate it.
-      if (wasListeningBeforeTTS.current && !userManuallyStoppedListeningRef.current) {
-        console.log("[STT/TTS Effect] TTS finished, STT was listening before. Restarting STT.");
-        startListening();
-        wasListeningBeforeTTS.current = false; // Reset the flag
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [speaking]);
-
-  // Effect for silence detection and automatic submission (Problem 3)
-  useEffect(() => {
-    // Only trigger silence detection if STT is listening and user has not manually stopped it
-    if (listening && transcript && !userManuallyStoppedListeningRef.current) {
-      // Clear any existing timeout
-      if (speechTimeoutRef.current) {
-        clearTimeout(speechTimeoutRef.current);
-      }
-
-      // Set a new timeout
-      speechTimeoutRef.current = setTimeout(() => {
-        console.log("[Silence Detection] Speech paused, processing transcript and stopping listening.");
-        // Call processUserCommand directly here, and then stop listening
-        // This ensures processing happens only once per detected pause.
-        if (transcript && transcript !== processedTranscriptRef.current) {
-          console.log("[Silence Detection] Processing transcript:", transcript);
-          addMessage({ sender: 'user', text: transcript });
-          processUserCommand(transcript);
-          processedTranscriptRef.current = transcript; // Mark as processed
-        }
-        stopListening(); // This will set listening to false
-      }, SPEECH_PAUSE_THRESHOLD_MS);
-    } else if (!listening && speechTimeoutRef.current) {
-      // If listening stops, clear the timeout
-      clearTimeout(speechTimeoutRef.current);
-      speechTimeoutRef.current = null;
-    }
-
-    return () => {
-      if (speechTimeoutRef.current) {
-        clearTimeout(speechTimeoutRef.current);
-      }
-    };
-  }, [listening, transcript, stopListening, addMessage, processUserCommand, userManuallyStoppedListeningRef]); // Updated dependencies
-
-  useEffect(() => {
-    if (speaking) {
-      setAgentStatus('speaking');
-    } else {
-      setAgentStatus(listening ? 'listening' : 'idle');
-    }
-  }, [listening, speaking]);
 
   const processUserCommand = useCallback(async (command: string) => {
     if (!command) return;
