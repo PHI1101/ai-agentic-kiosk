@@ -173,6 +173,11 @@ const MainPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Runs only once on mount.
 
+  // 컴포넌트 마운트 시 inputValue 초기화
+  useEffect(() => {
+    setInputValue('');
+  }, []);
+
   // This effect manages the interplay between speaking and listening.
   useEffect(() => {
     if (speaking) {
