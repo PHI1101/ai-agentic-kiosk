@@ -167,8 +167,11 @@ const MainPage = () => {
       // When the assistant stops speaking, we might need to start listening.
       // This should only happen if the user hasn't manually stopped the mic.
       if (!listening && !userManuallyStoppedListeningRef.current) {
-        console.log("[Auto-Start] Assistant finished speaking. Starting listening.");
-        startListening();
+        console.log("[Auto-Start] Assistant finished speaking. Starting listening after 1 second delay.");
+        const timer = setTimeout(() => {
+          startListening();
+        }, 1000); // 1 second delay
+        return () => clearTimeout(timer); // Cleanup on unmount or re-render
       }
     }
     // We only want this to run when `speaking` changes.
