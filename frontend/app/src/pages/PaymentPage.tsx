@@ -31,7 +31,15 @@ const PaymentPage = () => {
     setAgentMessage(initialGreeting);
     speak(initialGreeting);
     
+    // TTS가 끝난 후 음성 인식을 시작하도록 타이머 설정
+    const speechEndTimeout = setTimeout(() => {
+      if (paymentStatus === 'selecting' && !listening) {
+        startListening();
+      }
+    }, 500); // TTS 시작 후 0.5초 뒤에 음성 인식 시작 시도
+
     return () => {
+      clearTimeout(speechEndTimeout);
       stopListening();
       window.speechSynthesis.cancel();
     };
@@ -63,8 +71,6 @@ const PaymentPage = () => {
         }, 4000);
       } else if (action === 'navigate_to_order') {
         navigate('/order');
-      } else if (currentOrder) {
-        setOrder(currentOrder);
       }
     } catch (error) {
       const errorMsg = "결제 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
@@ -135,17 +141,18 @@ const PaymentPage = () => {
       setAgentStatus('speaking');
       if (listening) stopListening();
     } else {
+      // AI가 말을 멈췄을 때, 결제 선택 중이고 듣고 있지 않다면 음성 인식 시작
       if (paymentStatus === 'selecting' && !listening) {
         startListening();
       }
       if (listening) {
         setAgentStatus('listening');
-      } else if (paymentStatus === 'processing') {
+      }
+    } else if (paymentStatus === 'processing') {
         setAgentStatus('thinking');
       } else {
         setAgentStatus('idle');
       }
-    }
   }, [speaking, listening, paymentStatus, startListening, stopListening]);
 
 
