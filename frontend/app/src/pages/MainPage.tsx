@@ -25,6 +25,8 @@ const MainPage = () => {
   const [inputValue, setInputValue] = useState('');
   const processedTranscriptRef = useRef<string | null>(null);
   const wasListeningBeforeTTS = useRef(false);
+  const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null); // For silence detection
+  const SPEECH_PAUSE_THRESHOLD_MS = 1500; // 1.5 seconds of silence to consider speech ended
 
   // Start listening on component mount for accessibility
   useEffect(() => {
@@ -37,6 +39,11 @@ const MainPage = () => {
     console.log(`[STT/TTS Effect] speaking: ${speaking}, listening: ${listening}, wasListeningBeforeTTS.current: ${wasListeningBeforeTTS.current}`);
     // When TTS starts speaking
     if (speaking) {
+      // Clear any speech timeout if TTS starts
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+        speechTimeoutRef.current = null;
+      }
       // If STT is currently listening
       if (listening) {
         console.log("[STT/TTS Effect] TTS started, STT was listening. Stopping STT.");
@@ -57,6 +64,32 @@ const MainPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speaking]);
+
+  // Effect for silence detection and automatic submission (Problem 3)
+  useEffect(() => {
+    if (listening && transcript) {
+      // Clear any existing timeout
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+
+      // Set a new timeout
+      speechTimeoutRef.current = setTimeout(() => {
+        console.log("[Silence Detection] Speech paused, stopping listening for processing.");
+        stopListening(); // This will trigger the processing useEffect
+      }, SPEECH_PAUSE_THRESHOLD_MS);
+    } else if (!listening && speechTimeoutRef.current) {
+      // If listening stops, clear the timeout
+      clearTimeout(speechTimeoutRef.current);
+      speechTimeoutRef.current = null;
+    }
+
+    return () => {
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+    };
+  }, [listening, transcript, stopListening]); // Add stopListening to dependencies
 
   useEffect(() => {
     if (speaking) {
@@ -118,13 +151,16 @@ const MainPage = () => {
     }
   }, [messages, addMessage, resetTranscript, conversationState, navigate, speak]); // Simplified dependency array
 
+  // Original useEffect for processing transcript (Problem 1)
   useEffect(() => {
     if (!listening && transcript && transcript !== processedTranscriptRef.current) {
+      console.log("[Transcript Processing] Processing new transcript:", transcript);
       addMessage({ sender: 'user', text: transcript });
       processUserCommand(transcript);
       processedTranscriptRef.current = transcript;
     }
     if (!listening && !transcript && processedTranscriptRef.current) {
+        console.log("[Transcript Processing] Clearing processedTranscriptRef.");
         processedTranscriptRef.current = null;
     }
   }, [listening, transcript, addMessage, processUserCommand]);

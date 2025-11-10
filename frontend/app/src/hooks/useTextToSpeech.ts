@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react'; // Import useRef
 
 export const useTextToSpeech = () => {
   const [speaking, setSpeaking] = useState(false);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null); // To track the current utterance
 
   const speak = useCallback((text: string) => {
     if (!('speechSynthesis' in window)) {
@@ -9,24 +10,38 @@ export const useTextToSpeech = () => {
       return;
     }
 
-    window.speechSynthesis.cancel(); // 진행 중인 모든 발화 취소
-    setSpeaking(false); // 새로운 발화 시작 전 speaking 상태 초기화
+    // Cancel any ongoing speech before starting a new one
+    window.speechSynthesis.cancel();
+    // If there was a previous utterance, ensure its onend/onerror handlers are cleaned up
+    if (currentUtteranceRef.current) {
+        currentUtteranceRef.current.onend = null;
+        currentUtteranceRef.current.onerror = null;
+    }
+    setSpeaking(false); // Reset speaking state before starting new speech
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ko-KR';
     utterance.rate = 1.1; // 약간 빠르게
+
+    currentUtteranceRef.current = utterance; // Store the current utterance
 
     utterance.onstart = () => {
       setSpeaking(true);
     };
 
     utterance.onend = () => {
-      setSpeaking(false);
+      if (currentUtteranceRef.current === utterance) { // Ensure it's the current utterance ending
+        setSpeaking(false);
+        currentUtteranceRef.current = null;
+      }
     };
 
     utterance.onerror = (event) => {
       console.error('SpeechSynthesisUtterance.onerror', event);
-      setSpeaking(false);
+      if (event.error !== 'interrupted' && currentUtteranceRef.current === utterance) { // Only set false if not interrupted and it's the current utterance
+        setSpeaking(false);
+        currentUtteranceRef.current = null;
+      }
     };
 
     window.speechSynthesis.speak(utterance);
