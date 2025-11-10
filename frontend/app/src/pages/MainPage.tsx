@@ -200,8 +200,8 @@ const MainPage = () => {
             <IconButton color="primary" onClick={handleTextInputSend} disabled={!inputValue}>
               <SendIcon />
             </IconButton>
-            <IconButton color={listening ? "error" : "primary"} onClick={handleToggleListening}>
-              {listening ? <MicOffIcon /> : <MicIcon />}
+            <IconButton color={listening ? "primary" : "error"} onClick={handleToggleListening}>
+              {listening ? <MicIcon /> : <MicOffIcon />}
             </IconButton>
           </Box>
         </Grid>
