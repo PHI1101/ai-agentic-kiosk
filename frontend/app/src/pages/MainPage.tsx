@@ -58,9 +58,11 @@ const MainPage = () => {
         setConversationState(newConversationState);
       }
 
+      // Reset manual stop state before AI speaks, allowing listening to resume automatically after.
+      userManuallyStoppedListeningRef.current = false;
       addMessage({ sender: 'assistant', text: reply });
       setAgentStatus('speaking');
-      speak(reply); // Now speak is available
+      speak(reply);
 
       // Navigate to payment page if backend requests it
       if (action === 'navigate_to_payment') {
@@ -156,28 +158,33 @@ const MainPage = () => {
     }
   }, [transcript]);
 
+  // Effect for the initial greeting message.
+  useEffect(() => {
+    const initialMessage = messages[0];
+    if (initialMessage && initialMessage.sender === 'assistant') {
+      speak(initialMessage.text);
+      // Ensure that after the initial message, the system is ready to listen.
+      userManuallyStoppedListeningRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Runs only once on mount.
+
   // This effect manages the interplay between speaking and listening.
   useEffect(() => {
-    // When the assistant starts speaking, we should stop listening.
     if (speaking) {
+      // If the AI is speaking, always stop listening.
       if (listening) {
         console.log("[Auto-Stop] Assistant is speaking. Stopping listening.");
         stopListening();
       }
     } else {
-      // When the assistant stops speaking, we might need to start listening.
-      // This should only happen if the user hasn't manually stopped the mic.
+      // If the AI has finished speaking and the user hasn't manually stopped the mic, start listening.
       if (!listening && !userManuallyStoppedListeningRef.current) {
-        console.log("[Auto-Start] Assistant finished speaking. Starting listening after 1 second delay.");
-        const timer = setTimeout(() => {
-          startListening();
-        }, 1000); // 1 second delay
-        return () => clearTimeout(timer); // Cleanup on unmount or re-render
+        console.log("[Auto-Start] Assistant finished speaking. Starting listening.");
+        startListening();
       }
     }
-    // We only want this to run when `speaking` changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [speaking, startListening, stopListening]);
+  }, [speaking, listening, startListening, stopListening]);
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
