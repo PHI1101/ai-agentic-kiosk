@@ -184,7 +184,7 @@ const MainPage = () => {
         console.log("[Auto-Start] Assistant finished speaking. Starting listening after a short delay.");
         const timer = setTimeout(() => {
           startListening();
-        }, 500); // 0.5초 딜레이
+        }, 7000); // 7초 딜레이
         return () => clearTimeout(timer); // Cleanup on unmount or re-render
       }
     }
