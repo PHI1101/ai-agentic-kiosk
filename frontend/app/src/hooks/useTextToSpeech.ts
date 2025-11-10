@@ -36,7 +36,11 @@ export const useTextToSpeech = () => {
     };
 
     utterance.onerror = (event) => {
-      console.error('SpeechSynthesisUtterance.onerror', event);
+      if (event.error === 'interrupted') {
+        console.info('SpeechSynthesisUtterance was interrupted as expected.');
+      } else {
+        console.error('SpeechSynthesisUtterance.onerror', event);
+      }
       // If an error occurs, and it's the current utterance, and we were actually speaking,
       // then set speaking to false.
       if (currentUtteranceRef.current === utterance && isSpeakingRef.current) {
