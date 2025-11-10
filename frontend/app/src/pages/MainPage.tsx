@@ -26,6 +26,7 @@ const MainPage = () => {
   const processedTranscriptRef = useRef<string | null>(null);
   const wasListeningBeforeTTS = useRef(false);
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null); // For silence detection
+  const userManuallyStoppedListeningRef = useRef(false); // New ref to track manual stop
   const SPEECH_PAUSE_THRESHOLD_MS = 1500; // 1.5 seconds of silence to consider speech ended
 
   // Start listening on component mount for accessibility
@@ -37,7 +38,7 @@ const MainPage = () => {
 
   // Effect to handle STT <> TTS interaction
   useEffect(() => {
-    console.log(`[STT/TTS Effect] speaking: ${speaking}, listening: ${listening}, wasListeningBeforeTTS.current: ${wasListeningBeforeTTS.current}`);
+    console.log(`[STT/TTS Effect] speaking: ${speaking}, listening: ${listening}, wasListeningBeforeTTS.current: ${wasListeningBeforeTTS.current}, userManuallyStoppedListeningRef.current: ${userManuallyStoppedListeningRef.current}`);
 
     // When TTS starts speaking
     if (speaking) {
@@ -47,17 +48,21 @@ const MainPage = () => {
         speechTimeoutRef.current = null;
       }
 
-      // If STT was listening when speak() was called, and it's still listening, stop it.
-      // wasListeningBeforeTTS.current is set in processUserCommand before speak()
-      if (wasListeningBeforeTTS.current && listening) {
+      // If STT is currently listening AND user has not manually stopped it,
+      // then mark for reactivation and stop STT.
+      if (listening && !userManuallyStoppedListeningRef.current) {
         console.log("[STT/TTS Effect] TTS started, STT was listening. Stopping STT.");
+        wasListeningBeforeTTS.current = true;
         stopListening();
+      } else {
+        // If STT was not listening, or user manually stopped it, don't reactivate automatically.
+        wasListeningBeforeTTS.current = false;
       }
     }
     // When TTS stops speaking
     else {
-      // If STT was listening before TTS started (and was stopped by TTS), reactivate it.
-      if (wasListeningBeforeTTS.current) {
+      // If STT was marked for reactivation AND user has not manually stopped it, reactivate it.
+      if (wasListeningBeforeTTS.current && !userManuallyStoppedListeningRef.current) {
         console.log("[STT/TTS Effect] TTS finished, STT was listening before. Restarting STT.");
         startListening();
         wasListeningBeforeTTS.current = false; // Reset the flag
@@ -68,7 +73,8 @@ const MainPage = () => {
 
   // Effect for silence detection and automatic submission (Problem 3)
   useEffect(() => {
-    if (listening && transcript) {
+    // Only trigger silence detection if STT is listening and user has not manually stopped it
+    if (listening && transcript && !userManuallyStoppedListeningRef.current) {
       // Clear any existing timeout
       if (speechTimeoutRef.current) {
         clearTimeout(speechTimeoutRef.current);
@@ -90,7 +96,7 @@ const MainPage = () => {
         clearTimeout(speechTimeoutRef.current);
       }
     };
-  }, [listening, transcript, stopListening]); // Add stopListening to dependencies
+  }, [listening, transcript, stopListening, userManuallyStoppedListeningRef]); // Add userManuallyStoppedListeningRef to dependencies
 
   useEffect(() => {
     if (speaking) {
@@ -105,9 +111,6 @@ const MainPage = () => {
 
     setAgentStatus('thinking');
     try {
-      // Capture listening state before speak() is called
-      wasListeningBeforeTTS.current = listening; // <--- Set here
-
       // Get the latest state directly from the store to avoid stale state issues
       const { orderId, storeName, items } = useOrderStore.getState();
       const orderData = { orderId, storeName, items };
@@ -153,7 +156,7 @@ const MainPage = () => {
       addMessage({ sender: 'assistant', text: errorText });
       resetTranscript();
     }
-  }, [messages, addMessage, resetTranscript, conversationState, navigate, speak, listening]); // Added 'listening' to dependencies
+  }, [messages, addMessage, resetTranscript, conversationState, navigate, speak]); // Removed 'listening' from dependencies
 
   // Original useEffect for processing transcript (Problem 1)
   useEffect(() => {
@@ -178,8 +181,12 @@ const MainPage = () => {
 
   const handleToggleListening = () => {
     if (listening) {
+      console.log("[Manual Control] User stopped listening.");
+      userManuallyStoppedListeningRef.current = true;
       stopListening();
     } else {
+      console.log("[Manual Control] User started listening.");
+      userManuallyStoppedListeningRef.current = false;
       startListening();
     }
   };
