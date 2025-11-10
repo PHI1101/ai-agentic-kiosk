@@ -24,6 +24,36 @@ const MainPage = () => {
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
   const processedTranscriptRef = useRef<string | null>(null);
+  const wasListeningBeforeTTS = useRef(false);
+
+  // Start listening on component mount for accessibility
+  useEffect(() => {
+    startListening();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Effect to handle STT <> TTS interaction
+  useEffect(() => {
+    // When TTS starts speaking
+    if (speaking) {
+      // If STT is currently listening
+      if (listening) {
+        // Record that STT was on and stop it
+        wasListeningBeforeTTS.current = true;
+        stopListening();
+      }
+    } 
+    // When TTS stops speaking
+    else {
+      // If STT was on before TTS started
+      if (wasListeningBeforeTTS.current) {
+        // Restart STT and reset the flag
+        startListening();
+        wasListeningBeforeTTS.current = false;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speaking]);
 
   useEffect(() => {
     if (speaking) {
