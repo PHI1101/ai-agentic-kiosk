@@ -185,13 +185,17 @@ const MainPage = () => {
       // If the AI has finished speaking and the user hasn't manually stopped the mic, start listening.
       if (!listening && !userManuallyStoppedListeningRef.current) {
         console.log("[Auto-Start] Assistant finished speaking. Starting listening after a short delay.");
+        
+        // 메시지 배열의 길이를 확인하여 딜레이 시간을 다르게 적용
+        const delay = messages.length === 1 ? 1000 : 10000; // 첫 메시지 후 1초, 그 이후 10초
+        
         const timer = setTimeout(() => {
           startListening();
-        }, 7000); // 7초 딜레이
+        }, delay);
         return () => clearTimeout(timer); // Cleanup on unmount or re-render
       }
     }
-  }, [speaking, listening, startListening, stopListening]);
+  }, [speaking, listening, startListening, stopListening, messages.length]); // messages.length를 의존성 배열에 추가
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
