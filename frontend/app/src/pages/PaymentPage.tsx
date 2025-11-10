@@ -20,6 +20,8 @@ const PaymentPage = () => {
   const [agentMessage, setAgentMessage] = useState("결제 방법을 선택해주세요.");
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [paymentStatus, setPaymentStatus] = useState<'selecting' | 'processing' | 'success' | 'failed'>('selecting');
+  const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null); // For silence detection
+  const SPEECH_PAUSE_THRESHOLD_MS = 1500; // 1.5 seconds of silence to consider speech ended
 
   // 페이지 로드 시 주문 내역과 결제 방법 질문을 음성으로 안내
   useEffect(() => {
@@ -38,6 +40,7 @@ const PaymentPage = () => {
 
   // AI 에이전트와 통신하는 함수
   const sendPaymentCommand = useCallback(async (command: string) => {
+    if (!command) return; // 빈 명령은 전송하지 않음
     setAgentStatus('thinking');
     try {
       const { ...orderData } = useOrderStore.getState();
@@ -84,18 +87,42 @@ const PaymentPage = () => {
     }, 5000);
   }, [paymentStatus, sendPaymentCommand]);
 
-  // 음성 명령으로 결제 방법 선택
+  // 음성 명령으로 결제 방법 선택 (즉시 처리)
   useEffect(() => {
-    if (transcript && !listening) {
+    if (transcript && listening) { // listening 중일 때만 즉시 처리
       if (transcript.includes('카드')) {
         handlePaymentMethodSelect('card');
         resetTranscript();
+        stopListening(); // 명령 처리 후 음성 인식 중지
       } else if (transcript.includes('큐알') || transcript.toLowerCase().includes('qr')) {
         handlePaymentMethodSelect('qr');
         resetTranscript();
+        stopListening(); // 명령 처리 후 음성 인식 중지
       }
     }
-  }, [transcript, listening, handlePaymentMethodSelect, resetTranscript]);
+  }, [transcript, listening, handlePaymentMethodSelect, resetTranscript, stopListening]);
+
+  // 침묵 감지 및 자동 전송 로직
+  useEffect(() => {
+    if (transcript && !speaking && listening) { // transcript가 있고, AI가 말하고 있지 않으며, 듣고 있을 때
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+
+      speechTimeoutRef.current = setTimeout(() => {
+        console.log(`[PaymentPage Silence Detection] User paused. Processing command: "${transcript}"`);
+        sendPaymentCommand(transcript);
+        resetTranscript();
+        stopListening(); // 전송 후 음성 인식 중지
+      }, SPEECH_PAUSE_THRESHOLD_MS);
+    }
+
+    return () => {
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+    };
+  }, [transcript, speaking, listening, sendPaymentCommand, resetTranscript, stopListening]);
 
   // 결제 취소 핸들러
   const handleCancelPayment = () => {
