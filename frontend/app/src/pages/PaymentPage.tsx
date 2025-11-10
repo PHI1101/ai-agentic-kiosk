@@ -141,18 +141,20 @@ const PaymentPage = () => {
       setAgentStatus('speaking');
       if (listening) stopListening();
     } else {
-      // AI가 말을 멈췄을 때, 결제 선택 중이고 듣고 있지 않다면 음성 인식 시작
+      // AI가 말을 멈췄을 때
       if (paymentStatus === 'selecting' && !listening) {
         startListening();
       }
+
+      // 현재 상태에 따라 에이전트 상태를 설정
       if (listening) {
         setAgentStatus('listening');
-      }
-    } else if (paymentStatus === 'processing') {
+      } else if (paymentStatus === 'processing') {
         setAgentStatus('thinking');
       } else {
         setAgentStatus('idle');
       }
+    }
   }, [speaking, listening, paymentStatus, startListening, stopListening]);
 
 
