@@ -34,19 +34,22 @@ const MainPage = () => {
 
   // Effect to handle STT <> TTS interaction
   useEffect(() => {
+    console.log(`[STT/TTS Effect] speaking: ${speaking}, listening: ${listening}, wasListeningBeforeTTS.current: ${wasListeningBeforeTTS.current}`);
     // When TTS starts speaking
     if (speaking) {
       // If STT is currently listening
       if (listening) {
+        console.log("[STT/TTS Effect] TTS started, STT was listening. Stopping STT.");
         // Record that STT was on and stop it
         wasListeningBeforeTTS.current = true;
         stopListening();
       }
-    } 
+    }
     // When TTS stops speaking
     else {
       // If STT was on before TTS started
       if (wasListeningBeforeTTS.current) {
+        console.log("[STT/TTS Effect] TTS finished, STT was listening before. Restarting STT.");
         // Restart STT and reset the flag
         startListening();
         wasListeningBeforeTTS.current = false;
