@@ -182,12 +182,21 @@ const MainPage = () => {
       if (!listening && !userManuallyStoppedListeningRef.current) {
         console.log("[Auto-Start] Assistant finished speaking. Starting listening after a short delay.");
         
-        // 메시지 배열의 길이를 확인하여 딜레이 시간을 다르게 적용
-        const delay = messages.length === 1 ? 1000 : 10000; // 첫 메시지 후 1초, 그 이후 10초
+        // AI 발화 텍스트 길이에 따라 딜레이 계산
+        const lastMessage = messages[messages.length - 1];
+        let calculatedDelay = 1000; // 기본 딜레이 1초
+
+        if (lastMessage && lastMessage.sender === 'assistant') {
+          const textLength = lastMessage.text.length;
+          // 텍스트 길이에 비례하여 딜레이 계산 (예: 10자당 1초)
+          // Math.max(1000, ...) : 최소 1초
+          // Math.min(..., 15000) : 최대 15초
+          calculatedDelay = Math.max(1000, Math.min(textLength * 100, 15000));
+        }
         
         const timer = setTimeout(() => {
           startListening();
-        }, delay);
+        }, calculatedDelay);
         return () => clearTimeout(timer); // Cleanup on unmount or re-render
       }
     }
