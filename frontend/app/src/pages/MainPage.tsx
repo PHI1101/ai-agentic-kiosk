@@ -113,6 +113,26 @@ const MainPage = () => {
     processUserCommand("결제할게요");
   }, [processUserCommand]);
 
+  // This effect manages the interplay between speaking and listening.
+  useEffect(() => {
+    // When the assistant starts speaking, we should stop listening.
+    if (speaking) {
+      if (listening) {
+        console.log("[Auto-Stop] Assistant is speaking. Stopping listening.");
+        stopListening();
+      }
+    } else {
+      // When the assistant stops speaking, we might need to start listening.
+      // This should only happen if the user hasn't manually stopped the mic.
+      if (!listening && !userManuallyStoppedListeningRef.current) {
+        console.log("[Auto-Start] Assistant finished speaking. Starting listening.");
+        startListening();
+      }
+    }
+    // We only want this to run when `speaking` changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speaking]);
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Grid container spacing={3}>
