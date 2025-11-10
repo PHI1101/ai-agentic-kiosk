@@ -1,8 +1,8 @@
-import { useCallback, useState, useRef } from 'react'; // Import useRef
+import { useCallback, useState, useRef } from 'react';
 
 export const useTextToSpeech = () => {
   const [speaking, setSpeaking] = useState(false);
-  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null); // To track the current utterance
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const speak = useCallback((text: string) => {
     if (!('speechSynthesis' in window)) {
@@ -10,18 +10,12 @@ export const useTextToSpeech = () => {
       return;
     }
 
-    // Cancel any ongoing speech before starting a new one
+    // Cancel any ongoing speech. This will trigger onend/onerror for the *previous* utterance.
     window.speechSynthesis.cancel();
-    // If there was a previous utterance, ensure its onend/onerror handlers are cleaned up
-    if (currentUtteranceRef.current) {
-        currentUtteranceRef.current.onend = null;
-        currentUtteranceRef.current.onerror = null;
-    }
-    setSpeaking(false); // Reset speaking state before starting new speech
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ko-KR';
-    utterance.rate = 1.1; // 약간 빠르게
+    utterance.rate = 1.1;
 
     currentUtteranceRef.current = utterance; // Store the current utterance
 
@@ -30,7 +24,8 @@ export const useTextToSpeech = () => {
     };
 
     utterance.onend = () => {
-      if (currentUtteranceRef.current === utterance) { // Ensure it's the current utterance ending
+      // Only set speaking to false if this is the utterance that is currently active
+      if (currentUtteranceRef.current === utterance) {
         setSpeaking(false);
         currentUtteranceRef.current = null;
       }
@@ -38,7 +33,9 @@ export const useTextToSpeech = () => {
 
     utterance.onerror = (event) => {
       console.error('SpeechSynthesisUtterance.onerror', event);
-      if (event.error !== 'interrupted' && currentUtteranceRef.current === utterance) { // Only set false if not interrupted and it's the current utterance
+      // Only set speaking to false if this is the utterance that is currently active
+      // and the error is not 'interrupted' (which can happen if cancel() was called on it)
+      if (currentUtteranceRef.current === utterance && event.error !== 'interrupted') {
         setSpeaking(false);
         currentUtteranceRef.current = null;
       }

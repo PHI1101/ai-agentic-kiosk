@@ -30,6 +30,7 @@ const MainPage = () => {
 
   // Start listening on component mount for accessibility
   useEffect(() => {
+    console.log("[MainPage Mount] Calling startListening()");
     startListening();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
