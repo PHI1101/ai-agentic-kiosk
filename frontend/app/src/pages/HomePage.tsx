@@ -49,10 +49,11 @@ const HomePage = () => {
 
   useEffect(() => {
     if (transcript.includes('주문 시작')) {
-      navigate('/order');
+      stopListening();
       resetTranscript();
+      navigate('/order');
     }
-  }, [transcript, navigate, resetTranscript]);
+  }, [transcript, navigate, resetTranscript, stopListening]);
 
   const handleOrderStart = () => {
     navigate('/order');
