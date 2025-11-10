@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Box, Typography, Button, Container, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import useVoiceRecognition from '../hooks/useVoiceRecognition';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { keyframes } from '@emotion/react';
+import VoiceInputIndicator from '../components/VoiceInputIndicator'; // VoiceInputIndicator import
 
 // Define keyframes for animations
 const fadeIn = keyframes`
@@ -32,14 +33,14 @@ const iconPulse = keyframes`
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { transcript, startListening, stopListening, resetTranscript } = useVoiceRecognition();
-  const { speak } = useTextToSpeech();
+  const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
+  const { speak, speaking, ttsFinishedNaturally } = useTextToSpeech(); // speaking, ttsFinishedNaturally 추가
 
   const welcomeText = "안녕하세요! AI 키오스크 '오더피아'입니다. 주문을 쉽고 편리하게 도와드릴게요. '주문 시작'이라고 말씀하시거나 아래 버튼을 눌러주세요.";
 
+  // 초기 환영 메시지 재생
   useEffect(() => {
     speak(welcomeText);
-    startListening();
     return () => {
       stopListening();
       window.speechSynthesis.cancel();
@@ -47,16 +48,29 @@ const HomePage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // TTS가 끝난 후 음성 인식 시작
+  useEffect(() => {
+    if (!speaking && ttsFinishedNaturally && !listening) {
+      const timer = setTimeout(() => {
+        startListening();
+      }, 500); // TTS 종료 후 0.5초 딜레이
+      return () => clearTimeout(timer);
+    }
+  }, [speaking, ttsFinishedNaturally, listening, startListening]);
+
+  // 음성 명령 처리
   useEffect(() => {
     if (transcript.includes('주문 시작')) {
       stopListening();
       resetTranscript();
-      navigate('/order');
+      navigate('/main'); // '/order' 대신 '/main'으로 변경
     }
   }, [transcript, navigate, resetTranscript, stopListening]);
 
   const handleOrderStart = () => {
-    navigate('/order');
+    stopListening(); // 버튼 클릭 시 음성 인식 중지
+    resetTranscript(); // 트랜스크립트 초기화
+    navigate('/main'); // '/order' 대신 '/main'으로 변경
   };
 
   return (
@@ -70,6 +84,7 @@ const HomePage = () => {
         p: 2,
       }}
     >
+      <VoiceInputIndicator listening={listening} onStop={stopListening} /> {/* VoiceInputIndicator 추가 */}
       <Container maxWidth="sm">
         <Paper
           elevation={12}

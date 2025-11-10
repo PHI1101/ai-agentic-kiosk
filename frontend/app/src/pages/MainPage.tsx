@@ -155,6 +155,8 @@ const MainPage = () => {
 
   // Update input field with transcript
   useEffect(() => {
+    // transcript가 비어있지 않을 때만 inputValue를 업데이트합니다.
+    // 이렇게 하면 resetTranscript() 호출 후 inputValue가 다시 채워지는 것을 방지합니다.
     if (transcript) {
       setInputValue(transcript);
     }
