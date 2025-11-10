@@ -46,7 +46,7 @@ const VoiceInputIndicator: React.FC<VoiceInputIndicatorProps> = ({ listening, on
           onClick={onStop}
           sx={{
             position: 'absolute',
-            bottom: 10,
+            bottom: -40, // Adjusted to place it further below
             color: 'white',
             backgroundColor: 'rgba(255, 255, 255, 0.2)',
             '&:hover': {
