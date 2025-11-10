@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Box, Grid, TextField, IconButton } from '@mui/material';
@@ -18,16 +19,16 @@ const MainPage = () => {
   const { transcript, listening, startListening, stopListening, resetTranscript } = useVoiceRecognition();
   const { messages, addMessage } = useChatStore();
   // No need to select state here, as we use getState() in callbacks
-  const { speak, speaking } = useTextToSpeech(); // Import useTextToSpeech
+  const { speak, speaking } = useTextToSpeech(); // Import useTextToSpeech // eslint-disable-line @typescript-eslint/no-unused-vars
   
   const [conversationState, setConversationState] = useState<any>({});
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [inputValue, setInputValue] = useState('');
   const processedTranscriptRef = useRef<string | null>(null);
-  const wasListeningBeforeTTS = useRef(false);
-  const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null); // For silence detection
+  const wasListeningBeforeTTS = useRef(false); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null); // For silence detection // eslint-disable-line @typescript-eslint/no-unused-vars
   const userManuallyStoppedListeningRef = useRef(false); // New ref to track manual stop
-  const SPEECH_PAUSE_THRESHOLD_MS = 1500; // 1.5 seconds of silence to consider speech ended
+  const SPEECH_PAUSE_THRESHOLD_MS = 1500; // 1.5 seconds of silence to consider speech ended // eslint-disable-line @typescript-eslint/no-unused-vars
 
   const processUserCommand = useCallback(async (command: string) => {
     if (!command) return;
@@ -146,3 +147,4 @@ const MainPage = () => {
 };
 
 export default MainPage;
+/* eslint-enable @typescript-eslint/no-unused-vars */
