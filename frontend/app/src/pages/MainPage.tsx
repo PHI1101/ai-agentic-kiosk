@@ -181,8 +181,11 @@ const MainPage = () => {
     } else {
       // If the AI has finished speaking and the user hasn't manually stopped the mic, start listening.
       if (!listening && !userManuallyStoppedListeningRef.current) {
-        console.log("[Auto-Start] Assistant finished speaking. Starting listening.");
-        startListening();
+        console.log("[Auto-Start] Assistant finished speaking. Starting listening after a short delay.");
+        const timer = setTimeout(() => {
+          startListening();
+        }, 500); // 0.5초 딜레이
+        return () => clearTimeout(timer); // Cleanup on unmount or re-render
       }
     }
   }, [speaking, listening, startListening, stopListening]);
