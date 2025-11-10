@@ -11,6 +11,7 @@ import AiAgentAvatar, { AgentStatus } from '../components/AiAgentAvatar';
 import useVoiceRecognition from '../hooks/useVoiceRecognition';
 import { useChatStore } from '../store/chatStore';
 import { useOrderStore } from '../store/orderStore';
+import VoiceInputIndicator from '../components/VoiceInputIndicator';
 import { useTextToSpeech } from '../hooks/useTextToSpeech'; // Import useTextToSpeech
 import axios from 'axios';
 
@@ -180,6 +181,7 @@ const MainPage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <VoiceInputIndicator listening={listening} />
       <Grid container spacing={3}>
         <Grid item xs={12} md={7}>
           <Box sx={{ mb: 2, textAlign: 'center' }}>
