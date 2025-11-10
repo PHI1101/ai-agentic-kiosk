@@ -82,8 +82,16 @@ const MainPage = () => {
 
       // Set a new timeout
       speechTimeoutRef.current = setTimeout(() => {
-        console.log("[Silence Detection] Speech paused, stopping listening for processing.");
-        stopListening(); // This will trigger the processing useEffect
+        console.log("[Silence Detection] Speech paused, processing transcript and stopping listening.");
+        // Call processUserCommand directly here, and then stop listening
+        // This ensures processing happens only once per detected pause.
+        if (transcript && transcript !== processedTranscriptRef.current) {
+          console.log("[Silence Detection] Processing transcript:", transcript);
+          addMessage({ sender: 'user', text: transcript });
+          processUserCommand(transcript);
+          processedTranscriptRef.current = transcript; // Mark as processed
+        }
+        stopListening(); // This will set listening to false
       }, SPEECH_PAUSE_THRESHOLD_MS);
     } else if (!listening && speechTimeoutRef.current) {
       // If listening stops, clear the timeout
@@ -96,7 +104,7 @@ const MainPage = () => {
         clearTimeout(speechTimeoutRef.current);
       }
     };
-  }, [listening, transcript, stopListening, userManuallyStoppedListeningRef]); // Add userManuallyStoppedListeningRef to dependencies
+  }, [listening, transcript, stopListening, addMessage, processUserCommand, userManuallyStoppedListeningRef]); // Updated dependencies
 
   useEffect(() => {
     if (speaking) {
@@ -156,21 +164,15 @@ const MainPage = () => {
       addMessage({ sender: 'assistant', text: errorText });
       resetTranscript();
     }
-  }, [messages, addMessage, resetTranscript, conversationState, navigate, speak]); // Removed 'listening' from dependencies
+  }, [messages, addMessage, resetTranscript, conversationState, navigate, speak]);
 
-  // Original useEffect for processing transcript (Problem 1)
+  // Original useEffect for processing transcript (Problem 1) - now simplified
   useEffect(() => {
-    if (!listening && transcript && transcript !== processedTranscriptRef.current) {
-      console.log("[Transcript Processing] Processing new transcript:", transcript);
-      addMessage({ sender: 'user', text: transcript });
-      processUserCommand(transcript);
-      processedTranscriptRef.current = transcript;
-    }
     if (!listening && !transcript && processedTranscriptRef.current) {
         console.log("[Transcript Processing] Clearing processedTranscriptRef.");
         processedTranscriptRef.current = null;
     }
-  }, [listening, transcript, addMessage, processUserCommand]);
+  }, [listening, transcript]);
 
   const handleTextInputSend = () => {
     if (!inputValue) return;
