@@ -58,7 +58,7 @@ const PaymentPage = () => {
         history: [{ sender: 'user', text: command }]
       });
 
-      const { reply, action, currentOrder } = response.data;
+      const { reply, action, currentOrder } = response.data; // eslint-disable-line @typescript-eslint/no-unused-vars
 
       setAgentMessage(reply);
       speak(reply);
